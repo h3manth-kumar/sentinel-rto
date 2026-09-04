@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -131,7 +132,7 @@ async def receive_gupshup_callback(payload: dict[str, Any]) -> dict[str, Any]:
 async def receive_twilio_ivr_callback(
     request: Request,
     order_id: str = "unknown",
-    digits: Optional[str] = None,
+    digits: str = "",
 ) -> dict[str, Any]:
     """Handle buyer IVR DTMF digit responses (1: Confirm, 2: Cancel)."""
     digits_val = digits
