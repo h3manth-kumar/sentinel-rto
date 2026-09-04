@@ -664,17 +664,23 @@
             renderFeedFromCache();
         };
 
+        let lastOrdersJson = '';
+
         const updateOrders = async () => {
             try {
                 const res = await fetch(`${API_BASE}/api/orders?limit=50`);
                 if(res.ok) {
                     const data = await res.json();
+                    const newJson = JSON.stringify((data || []).map(d => [d.order_id, d.payment_status, d.delivery_outcome, d.risk_score]));
                     allOrdersCache = data || [];
                     const headerTotal = document.getElementById('header-total-orders');
                     const railBadge = document.getElementById('rail-orders-badge');
                     if(headerTotal) headerTotal.textContent = allOrdersCache.length;
                     if(railBadge) railBadge.textContent = allOrdersCache.length;
-                    renderFeedFromCache();
+                    if(newJson !== lastOrdersJson) {
+                        lastOrdersJson = newJson;
+                        renderFeedFromCache();
+                    }
                     if(!currentActiveOrder && allOrdersCache.length > 0) {
                         renderOrderDetails(allOrdersCache[0]);
                     }
@@ -1451,10 +1457,10 @@
             updateTheBarMetrics();
             updateStreamMetrics();
 
-            setInterval(updateOrders, 1000);
-            setInterval(updateTheBarMetrics, 1000);
-            setInterval(updateStats, 2000);
-            setInterval(updateStreamMetrics, 250);
+            setInterval(updateOrders, 3000);
+            setInterval(updateTheBarMetrics, 3500);
+            setInterval(updateStats, 4000);
+            setInterval(updateStreamMetrics, 1000);
         });
     </script>
 </body>
