@@ -680,10 +680,13 @@ async def place_order(
     elif learned_features["burst_count_device"] >= 3 or (learned_features["cluster_size"] >= 4 and learned_features["cluster_rto_rate"] >= 0.20) or request.device.fingerprint_hash == "burst_attacker_dev_99":
         risk_score = max(risk_score, 96)
 
-    # 3. Apartment Complex Spoofing Check (Fake buyer in clean luxury complex)
-    elif h3_res.apartment_anomaly_flag and (is_bot or duration_ms < 1200 or canvas < 0.3):
-        apartment_isolated = True
-        risk_score = max(risk_score, 94)
+    # 3. Bot Attack / Spoofed Canvas / Proxy / Rapid Script Anomaly Check
+    elif is_bot or request.device.is_proxy or canvas < 0.35 or duration_ms < 800 or (request.customer.account_age_days <= 2 and request.customer.rto_count >= 2):
+        if h3_res.apartment_anomaly_flag:
+            apartment_isolated = True
+            risk_score = max(risk_score, 94)
+        else:
+            risk_score = max(risk_score, 96)
 
     # 4. Genuine Repeat Buyer Trust (Verified delivery history with 0% RTO)
     elif learned_features["customer_delivered_count"] >= 3 and learned_features["customer_rto_rate"] <= 0.08 and not is_bot:
