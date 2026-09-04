@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -33,24 +35,7 @@ deps = Dependencies()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan: start/stop all shared services."""
     settings = get_settings()
-
-    # --- Redis Feature Store ---
-    try:
-        deps.feature_store = RedisFeatureStore(redis_url=settings.redis_url)
-        await deps.feature_store.connect()
-        logger.info("Redis feature store connected.")
-    except Exception as e:
-        logger.warning("Redis feature store unavailable: %s. Using fallbacks.", e)
-        deps.feature_store = None
-
-    # --- Redis Burst Limiter ---
-    try:
-        deps.burst_limiter = BurstRateLimiter(redis_url=settings.redis_url)
-        await deps.burst_limiter.connect()
-        logger.info("Burst rate limiter connected.")
-    except Exception as e:
-        logger.warning("Burst rate limiter unavailable: %s. Burst checks disabled.", e)
-        deps.burst_limiter = None
+    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
     # --- ONNX Inference Engine ---
     try:
@@ -63,16 +48,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("ONNX inference engine failed to start: %s. Using fallback scores.", e)
         deps.inference_engine = None
 
-    # --- Kafka Producer ---
-    try:
-        deps.kafka_producer = SentinelKafkaProducer(
-            bootstrap_servers=settings.kafka_bootstrap_servers,
-        )
-        await deps.kafka_producer.start()
-        logger.info("Kafka producer started.")
-    except Exception as e:
-        logger.warning("Kafka producer unavailable: %s. Event emission disabled.", e)
-        deps.kafka_producer = None
+    # In serverless environments with localhost Redis/Kafka, skip connecting to prevent socket hangs
+    if not is_serverless or "localhost" not in settings.redis_url:
+        # --- Redis Feature Store ---
+        try:
+            deps.feature_store = RedisFeatureStore(redis_url=settings.redis_url)
+            await asyncio.wait_for(deps.feature_store.connect(), timeout=0.15)
+            logger.info("Redis feature store connected.")
+        except Exception as e:
+            logger.warning("Redis feature store unavailable: %s. Using fallbacks.", e)
+            deps.feature_store = None
+
+        # --- Redis Burst Limiter ---
+        try:
+            deps.burst_limiter = BurstRateLimiter(redis_url=settings.redis_url)
+            await asyncio.wait_for(deps.burst_limiter.connect(), timeout=0.15)
+            logger.info("Burst rate limiter connected.")
+        except Exception as e:
+            logger.warning("Burst rate limiter unavailable: %s. Burst checks disabled.", e)
+            deps.burst_limiter = None
+
+    if not is_serverless or "localhost" not in settings.kafka_bootstrap_servers:
+        # --- Kafka Producer ---
+        try:
+            deps.kafka_producer = SentinelKafkaProducer(
+                bootstrap_servers=settings.kafka_bootstrap_servers,
+            )
+            await asyncio.wait_for(deps.kafka_producer.start(), timeout=0.15)
+            logger.info("Kafka producer started.")
+        except Exception as e:
+            logger.warning("Kafka producer unavailable: %s. Event emission disabled.", e)
+            deps.kafka_producer = None
 
     logger.info("SENTINEL-RTO startup complete.")
     yield

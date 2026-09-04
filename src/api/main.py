@@ -1,10 +1,11 @@
 import json
+import os
 import uvicorn
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import uuid
@@ -63,28 +64,53 @@ if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
+def _read_file_content(filename: str) -> str | None:
+    for candidate_dir in [
+        static_dir,
+        Path(__file__).resolve().parent.parent.parent / "static",
+        Path.cwd() / "static",
+        Path("/var/task/static"),
+        Path("/vercel/path0/static"),
+        Path("static"),
+    ]:
+        p = candidate_dir / filename
+        if p.exists() and p.is_file():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                pass
+    return None
+
+
 @app.get("/", include_in_schema=False)
+@app.get("/api/index", include_in_schema=False)
+@app.get("/api/index/", include_in_schema=False)
 async def serve_dashboard():
     """Serve the merchant dashboard."""
-    index_path = static_dir / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path), media_type="text/html")
-    for alt in [Path("static/index.html"), Path.cwd() / "static/index.html"]:
-        if alt.exists():
-            return FileResponse(str(alt), media_type="text/html")
-    return {"message": "SENTINEL-RTO API is running. Visit /docs for API documentation."}
+    content = _read_file_content("index.html")
+    if content:
+        return HTMLResponse(content=content, status_code=200)
+    return HTMLResponse("<h1>SENTINEL-RTO API</h1><p>API is active. Visit <a href='/shop'>/shop</a> or <a href='/docs'>/docs</a>.</p>", status_code=200)
 
 
 @app.get("/shop", include_in_schema=False)
+@app.get("/api/shop", include_in_schema=False)
 async def serve_shop():
     """Serve the customer storefront."""
-    shop_path = static_dir / "shop.html"
-    if shop_path.exists():
-        return FileResponse(str(shop_path), media_type="text/html")
-    for alt in [Path("static/shop.html"), Path.cwd() / "static/shop.html"]:
-        if alt.exists():
-            return FileResponse(str(alt), media_type="text/html")
-    return {"message": "Storefront HTML not found"}
+    content = _read_file_content("shop.html")
+    if content:
+        return HTMLResponse(content=content, status_code=200)
+    return HTMLResponse("<h1>Storefront</h1><p>Storefront template is loading...</p>", status_code=200)
+
+
+@app.get("/static/{file_path:path}", include_in_schema=False)
+async def serve_static_asset(file_path: str):
+    content = _read_file_content(file_path)
+    if content is not None:
+        media_type = "application/javascript" if file_path.endswith(".js") else "text/css"
+        return HTMLResponse(content=content, media_type=media_type, status_code=200)
+    return HTMLResponse("Not found", status_code=404)
 
 
 @app.get("/api/feature-importance")
