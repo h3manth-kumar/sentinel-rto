@@ -73,9 +73,9 @@ async def app(scope, receive, send):
                 stripped = scope_path[len("/api/index"):]
                 resolved_path = "/" + stripped.lstrip("/")
             else:
-                resolved_path = scope_path
-
         scope["path"] = resolved_path
+        scope["raw_path"] = resolved_path.encode("latin1")
+        scope["root_path"] = ""
 
     try:
         await fastapi_app(scope, receive, send)

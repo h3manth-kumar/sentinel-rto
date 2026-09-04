@@ -5,10 +5,13 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.api.dependencies import lifespan
 from src.api.routes.health import health_router
@@ -36,6 +39,18 @@ app = FastAPI(
     version="1.0.0",
     lifespan=None if is_serverless else lifespan,
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    err_trace = traceback.format_exc()
+    logger.error("Uncaught exception on %s: %s", request.url.path, err_trace)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc), "traceback": err_trace},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,
