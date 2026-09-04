@@ -1113,6 +1113,10 @@
             }
         };
 
+        let lastTypingHistoryHash = '';
+        let lastStreamRecordsHash = '';
+        let lastLatestTypingId = '';
+
         const updateStreamMetrics = async () => {
             try {
                 const res = await fetch(`${API_BASE}/api/stream/realtime`);
@@ -1130,10 +1134,10 @@
                     const tputValue = data.throughput_eps || data.throughput_events_per_sec || 0;
                     const h3Count = data.active_h3_spatial_cells || data.active_h3_cells_in_window || 0;
 
-                    if(totalEl) totalEl.textContent = formatNumber(totalCount);
-                    if(windowEl) windowEl.textContent = formatNumber(windowCount);
+                    if(totalEl && totalEl.textContent !== formatNumber(totalCount)) totalEl.textContent = formatNumber(totalCount);
+                    if(windowEl && windowEl.textContent !== formatNumber(windowCount)) windowEl.textContent = formatNumber(windowCount);
                     if(tputEl) tputEl.textContent = tputValue.toFixed(1) + ' eps';
-                    if(burstsEl) burstsEl.textContent = formatNumber(h3Count);
+                    if(burstsEl && burstsEl.textContent !== formatNumber(h3Count)) burstsEl.textContent = formatNumber(h3Count);
 
                     // Dedicated Kafka Tab KPIs
                     const kTotal = document.getElementById('kafka-total-events');
@@ -1141,17 +1145,19 @@
                     const kTput = document.getElementById('kafka-throughput');
                     const kBursts = document.getElementById('kafka-h3-bursts');
 
-                    if(kTotal) kTotal.textContent = formatNumber(totalCount);
-                    if(kWindow) kWindow.textContent = formatNumber(windowCount);
+                    if(kTotal && kTotal.textContent !== formatNumber(totalCount)) kTotal.textContent = formatNumber(totalCount);
+                    if(kWindow && kWindow.textContent !== formatNumber(windowCount)) kWindow.textContent = formatNumber(windowCount);
                     if(kTput) kTput.textContent = tputValue.toFixed(1) + ' eps';
-                    if(kBursts) kBursts.textContent = formatNumber(h3Count);
+                    if(kBursts && kBursts.textContent !== formatNumber(h3Count)) kBursts.textContent = formatNumber(h3Count);
 
                     // Live Keystroke Radar & Active Sessions
                     const typingSessions = data.active_typing_sessions || data.typing_streams || [];
                     const typingHistory = data.recent_typing_history || [];
                     const latestTyping = typingSessions.length > 0 ? typingSessions[0] : (typingHistory.length > 0 ? typingHistory[0] : null);
 
-                    if(latestTyping) {
+                    const currentTypingId = latestTyping ? `${latestTyping.customer_name}_${latestTyping.field_modified}_${latestTyping.iso_time}` : '';
+                    if(latestTyping && currentTypingId !== lastLatestTypingId) {
+                        lastLatestTypingId = currentTypingId;
                         const termName = document.getElementById('term-name');
                         const termPhone = document.getElementById('term-phone');
                         const termField = document.getElementById('term-field');
@@ -1187,52 +1193,60 @@
                         }
                     }
 
-                    // Keystroke History Table
+                    // Keystroke History Table (diff-checked)
                     const historyTbody = document.getElementById('keystroke-history-tbody');
-                    if(historyTbody && typingHistory.length > 0) {
-                        historyTbody.innerHTML = typingHistory.slice(0, 10).map(t => {
-                            const score = t.preliminary_risk_score || 15;
-                            const action = t.preliminary_action || 'ALLOW';
-                            let actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800">ALLOW (15)</span>`;
-                            if(action === 'BLOCK' || score > 70) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-800">BLOCK (${score})</span>`;
-                            else if(action === 'CHALLENGE_DEPOSIT' || score > 30) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-800">STEP-UP (${score})</span>`;
+                    const typingHash = JSON.stringify(typingHistory.slice(0, 10).map(t => [t.iso_time, t.customer_name, t.field_modified, t.preliminary_action]));
+                    if(historyTbody && typingHash !== lastTypingHistoryHash) {
+                        lastTypingHistoryHash = typingHash;
+                        if(typingHistory.length > 0) {
+                            historyTbody.innerHTML = typingHistory.slice(0, 10).map(t => {
+                                const score = t.preliminary_risk_score || 15;
+                                const action = t.preliminary_action || 'ALLOW';
+                                let actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800">ALLOW (15)</span>`;
+                                if(action === 'BLOCK' || score > 70) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-800">BLOCK (${score})</span>`;
+                                else if(action === 'CHALLENGE_DEPOSIT' || score > 30) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-800">STEP-UP (${score})</span>`;
 
-                            return `
-                                <tr class="hover:bg-[#f2f4f5] transition-colors">
-                                    <td class="py-2 px-3 font-mono text-[11px] text-[#787574]">${t.iso_time || 'Just now'}</td>
-                                    <td class="py-2 px-3 font-bold text-[#000000]">${t.customer_name || 'Shopper'}</td>
-                                    <td class="py-2 px-3 font-mono text-[11px] text-[#5433eb]">${t.field_modified || 'address'}</td>
-                                    <td class="py-2 px-3 text-[#787574] text-[11px] truncate max-w-[180px]">${t.area_name || t.pincode}</td>
-                                    <td class="py-2 px-3 text-right">${actionBadge}</td>
-                                </tr>
-                            `;
-                        }).join('');
+                                return `
+                                    <tr class="hover:bg-[#f2f4f5] transition-colors">
+                                        <td class="py-2 px-3 font-mono text-[11px] text-[#787574]">${t.iso_time || 'Just now'}</td>
+                                        <td class="py-2 px-3 font-bold text-[#000000]">${t.customer_name || 'Shopper'}</td>
+                                        <td class="py-2 px-3 font-mono text-[11px] text-[#5433eb]">${t.field_modified || 'address'}</td>
+                                        <td class="py-2 px-3 text-[#787574] text-[11px] truncate max-w-[180px]">${t.area_name || t.pincode}</td>
+                                        <td class="py-2 px-3 text-right">${actionBadge}</td>
+                                    </tr>
+                                `;
+                            }).join('');
+                        }
                     }
 
-                    // Stream records list
-                    const listContainer = document.getElementById('stream-records-list');
-                    const kListContainer = document.getElementById('kafka-stream-records-list');
+                    // Stream records list (diff-checked)
                     const records = data.recent_stream_records || [];
+                    const streamHash = JSON.stringify(records.slice(0, 15).map(r => [r.stream_seq, r.order_id, r.action, r.amount_paise]));
+                    if(streamHash !== lastStreamRecordsHash) {
+                        lastStreamRecordsHash = streamHash;
+                        const listContainer = document.getElementById('stream-records-list');
+                        const kListContainer = document.getElementById('kafka-stream-records-list');
 
-                    const renderRecordsHtml = (recs) => {
-                        if(recs.length === 0) return `<div class="text-[#787574] text-[11px]">Awaiting live event payloads...</div>`;
-                        return recs.map(r => `
-                            <div class="flex items-center justify-between p-2.5 bg-[#f2f4f5] rounded-[14px] border border-[#ebebeb] text-[11px]">
-                                <div class="flex items-center space-x-2.5">
-                                    <span class="text-[#5433eb] font-bold font-mono">#${r.stream_seq}</span>
-                                    <span class="text-[#000000] font-bold">${r.customer_name || 'Shopper'}</span>
-                                    <span class="text-[#787574] font-mono text-[10px]">(${r.order_id || 'stream_ord'})</span>
+                        const renderRecordsHtml = (recs) => {
+                            if(recs.length === 0) return `<div class="text-[#787574] text-[11px]">Awaiting live event payloads...</div>`;
+                            return recs.map(r => `
+                                <div class="flex items-center justify-between p-2.5 bg-[#f2f4f5] rounded-[14px] border border-[#ebebeb] text-[11px]">
+                                    <div class="flex items-center space-x-2.5">
+                                        <span class="text-[#5433eb] font-bold font-mono">#${r.stream_seq}</span>
+                                        <span class="text-[#000000] font-bold">${r.customer_name || 'Shopper'}</span>
+                                        <span class="text-[#787574] font-mono text-[10px]">(${r.order_id || 'stream_ord'})</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2.5">
+                                        <span class="text-[#000000] font-bold font-mono">₹${((r.amount_paise || 0) / 100).toLocaleString('en-IN')}</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.action === 'ALLOW' ? 'bg-emerald-100 text-emerald-800' : (r.action === 'CHALLENGE_DEPOSIT' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">${r.action}</span>
+                                    </div>
                                 </div>
-                                <div class="flex items-center space-x-2.5">
-                                    <span class="text-[#000000] font-bold font-mono">₹${((r.amount_paise || 0) / 100).toLocaleString('en-IN')}</span>
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.action === 'ALLOW' ? 'bg-emerald-100 text-emerald-800' : (r.action === 'CHALLENGE_DEPOSIT' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">${r.action}</span>
-                                </div>
-                            </div>
-                        `).join('');
-                    };
+                            `).join('');
+                        };
 
-                    if(listContainer) listContainer.innerHTML = renderRecordsHtml(records);
-                    if(kListContainer) kListContainer.innerHTML = renderRecordsHtml(records);
+                        if(listContainer) listContainer.innerHTML = renderRecordsHtml(records);
+                        if(kListContainer) kListContainer.innerHTML = renderRecordsHtml(records);
+                    }
                 }
             } catch(e) { console.debug('Stream poll error:', e); }
         };
