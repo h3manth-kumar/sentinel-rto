@@ -36,36 +36,35 @@ async def app(scope, receive, send):
         return
 
     if scope["type"] == "http":
-        headers = dict(scope.get("headers", []))
-        
-        # 1. Check x-now-route-matches (Vercel rewrite regex capture group $1)
+        import urllib.parse
         resolved_path = None
-        route_matches = headers.get(b"x-now-route-matches")
-        if route_matches:
-            try:
-                import urllib.parse
-                parsed = urllib.parse.parse_qs(route_matches.decode("latin1"))
-                if "1" in parsed and parsed["1"]:
-                    val = parsed["1"][0]
-                    resolved_path = "/" + val.lstrip("/")
-            except Exception:
-                pass
-
-        # 2. Check x-forwarded-url / x-forwarded-uri / x-original-url / x-invoke-path
+        
+        # 1. Check __path query parameter from Vercel rewrite
+        raw_qs = scope.get("query_string", b"").decode("latin1")
+        if raw_qs:
+            qs_dict = urllib.parse.parse_qs(raw_qs, keep_blank_values=True)
+            if "__path" in qs_dict:
+                val = qs_dict.pop("__path")[0]
+                resolved_path = "/" + val.lstrip("/")
+                # Reconstruct cleaned query string without __path
+                new_qs_pairs = []
+                for k, v_list in qs_dict.items():
+                    for v in v_list:
+                        new_qs_pairs.append(f"{urllib.parse.quote(k)}={urllib.parse.quote(v)}")
+                scope["query_string"] = "&".join(new_qs_pairs).encode("latin1")
+        
+        # 2. Check x-now-route-matches or other headers if __path not found
         if not resolved_path:
-            import urllib.parse
-            for h in (b"x-forwarded-url", b"x-forwarded-uri", b"x-original-url", b"x-invoke-path", b"x-rewrite-url"):
-                val = headers.get(h)
-                if val:
-                    decoded = val.decode("latin1", errors="ignore")
-                    if decoded.startswith("http://") or decoded.startswith("https://"):
-                        url_path = urllib.parse.urlparse(decoded).path
-                        if url_path:
-                            resolved_path = url_path
-                            break
-                    elif decoded and not decoded.startswith("/api/index"):
-                        resolved_path = decoded.split("?")[0]
-                        break
+            headers = dict(scope.get("headers", []))
+            route_matches = headers.get(b"x-now-route-matches")
+            if route_matches:
+                try:
+                    parsed = urllib.parse.parse_qs(route_matches.decode("latin1"))
+                    if "1" in parsed and parsed["1"]:
+                        val = parsed["1"][0]
+                        resolved_path = "/" + val.lstrip("/")
+                except Exception:
+                    pass
 
         # 3. Fallback to scope path
         if not resolved_path:
