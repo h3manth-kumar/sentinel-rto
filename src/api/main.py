@@ -44,8 +44,21 @@ app.include_router(risk_router)
 app.include_router(webhook_router)
 app.include_router(shop_router)
 
-# Serve static dashboard
-static_dir = Path(__file__).resolve().parent.parent.parent / "static"
+# Resolve static directory with fallbacks for local and serverless Vercel
+def _find_static_dir() -> Path:
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "static",
+        Path.cwd() / "static",
+        Path("/var/task/static"),
+        Path("/vercel/path0/static"),
+    ]
+    for p in candidates:
+        if p.exists() and (p / "index.html").exists():
+            return p
+    return candidates[0]
+
+
+static_dir = _find_static_dir()
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -55,16 +68,23 @@ async def serve_dashboard():
     """Serve the merchant dashboard."""
     index_path = static_dir / "index.html"
     if index_path.exists():
-        return FileResponse(str(index_path))
+        return FileResponse(str(index_path), media_type="text/html")
+    for alt in [Path("static/index.html"), Path.cwd() / "static/index.html"]:
+        if alt.exists():
+            return FileResponse(str(alt), media_type="text/html")
     return {"message": "SENTINEL-RTO API is running. Visit /docs for API documentation."}
 
 
 @app.get("/shop", include_in_schema=False)
 async def serve_shop():
+    """Serve the customer storefront."""
     shop_path = static_dir / "shop.html"
     if shop_path.exists():
-        return FileResponse(str(shop_path))
-    return {"message": "Shop not found"}
+        return FileResponse(str(shop_path), media_type="text/html")
+    for alt in [Path("static/shop.html"), Path.cwd() / "static/shop.html"]:
+        if alt.exists():
+            return FileResponse(str(alt), media_type="text/html")
+    return {"message": "Storefront HTML not found"}
 
 
 @app.get("/api/feature-importance")

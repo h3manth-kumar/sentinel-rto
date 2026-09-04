@@ -2,7 +2,10 @@ import json
 import logging
 from typing import AsyncGenerator, List, Optional, Union
 
-from aiokafka import AIOKafkaConsumer
+try:
+    from aiokafka import AIOKafkaConsumer
+except ImportError:
+    AIOKafkaConsumer = None
 
 from src.kafka.schemas import CancellationEvent, KafkaTopics, OrderEvent, RTOEvent
 
@@ -16,22 +19,32 @@ class SentinelKafkaConsumer:
         self.bootstrap_servers = bootstrap_servers
         self.group_id = group_id
         self.topics = topics
-        self.consumer: Optional[AIOKafkaConsumer] = None
+        self.consumer: Optional[Any] = None
 
     async def start(self) -> None:
         """Creates and starts the AIOKafkaConsumer."""
-        self.consumer = AIOKafkaConsumer(
-            *self.topics,
-            bootstrap_servers=self.bootstrap_servers,
-            group_id=self.group_id
-        )
-        await self.consumer.start()
-        logger.info(f"Kafka consumer started for topics={self.topics} group_id={self.group_id}")
+        if AIOKafkaConsumer is None:
+            logger.info("aiokafka not installed; consumer running in in-memory mode.")
+            return
+        try:
+            self.consumer = AIOKafkaConsumer(
+                *self.topics,
+                bootstrap_servers=self.bootstrap_servers,
+                group_id=self.group_id
+            )
+            await self.consumer.start()
+            logger.info(f"Kafka consumer started for topics={self.topics} group_id={self.group_id}")
+        except Exception as e:
+            logger.warning("Kafka consumer skipped connection: %s", e)
+            self.consumer = None
 
     async def stop(self) -> None:
         """Stops the consumer."""
         if self.consumer:
-            await self.consumer.stop()
+            try:
+                await self.consumer.stop()
+            except Exception:
+                pass
             logger.info("Kafka consumer stopped")
 
     def _deserialize(self, topic: str, raw: bytes) -> Union[OrderEvent, CancellationEvent, RTOEvent]:
@@ -43,21 +56,19 @@ class SentinelKafkaConsumer:
             return CancellationEvent(**payload)
         elif topic == KafkaTopics.RTO_EVENTS:
             return RTOEvent(**payload)
-        else:
-            raise ValueError(f"Unknown topic: {topic}")
+        raise ValueError(f"Unknown topic: {topic}")
 
     async def consume(self) -> AsyncGenerator[Union[OrderEvent, CancellationEvent, RTOEvent], None]:
-        """Yields deserialized messages from Kafka topics."""
+        """Async generator yielding deserialized messages."""
         if not self.consumer:
-            raise RuntimeError("Consumer not started")
-        
+            return
         async for msg in self.consumer:
             try:
-                deserialized_msg = self._deserialize(msg.topic, msg.value)
-                logger.debug(f"Consumed message from {msg.topic}: {deserialized_msg}")
-                yield deserialized_msg
+                event = self._deserialize(msg.topic, msg.value)
+                logger.debug(f"Consumed event from {msg.topic}: {event}")
+                yield event
             except Exception as e:
-                logger.error(f"Failed to deserialize message from {msg.topic}: {e}")
+                logger.error(f"Error deserializing message from {msg.topic}: {e}")
 
     async def __aenter__(self):
         await self.start()

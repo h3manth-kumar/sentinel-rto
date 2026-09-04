@@ -11,6 +11,7 @@ pydantic-settings==2.3.4
 asyncpg==0.29.0
 sqlalchemy[asyncio]==2.0.31
 redis==5.0.7
+aiokafka==0.10.0
 
 # Spatial & Graph
 h3==3.7.7
