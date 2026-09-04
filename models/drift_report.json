@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-09-02T17:09:29.565977+00:00",
+  "total_samples_analyzed": 110,
+  "overall_dataset_drift": true,
+  "drifted_features_count": 7,
+  "total_features_count": 7,
+  "drift_share": 1.0,
+  "feature_metrics": [
+    {
+      "feature_name": "form_fill_duration_ms",
+      "statistic_type": "KS_AND_PSI",
+      "score": 1.4323,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 12027.35,
+      "current_mean": 5984.28,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "canvas_entropy_score",
+      "statistic_type": "KS_AND_PSI",
+      "score": 2.4599,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 0.87,
+      "current_mean": 0.48,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "account_age_days",
+      "statistic_type": "KS_AND_PSI",
+      "score": 10.579,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 121.19,
+      "current_mean": 5556.78,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "spatial_confidence",
+      "statistic_type": "KS_AND_PSI",
+      "score": 10.579,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 0.85,
+      "current_mean": 5803.34,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "order_amount_inr",
+      "statistic_type": "KS_AND_PSI",
+      "score": 10.579,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 1794.97,
+      "current_mean": 5643.02,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "device_burst_count",
+      "statistic_type": "KS_AND_PSI",
+      "score": 11.3715,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 0.28,
+      "current_mean": 5368.39,
+      "severity": "CRITICAL"
+    },
+    {
+      "feature_name": "historical_rto_rate",
+      "statistic_type": "KS_AND_PSI",
+      "score": 12.5196,
+      "p_value": 0.0,
+      "is_drift_detected": true,
+      "baseline_mean": 0.13,
+      "current_mean": 5505.89,
+      "severity": "CRITICAL"
+    }
+  ],
+  "concept_shift_metric": null
+}

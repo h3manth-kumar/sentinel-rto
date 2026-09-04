@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shop. — Sentinel AI Merchant Operations Console</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        canvas: '#f2f4f5',
+                        surface: '#ffffff',
+                        ink: '#000000',
+                        'faint-border': '#ebebeb',
+                        'muted-gray': '#787574',
+                        'cool-stone': '#cccccc',
+                        'warm-fog': '#acb0aa',
+                        violet: {
+                            shop: '#5433eb',
+                            wash: '#c0b5f3',
+                            hover: '#4524db',
+                        },
+                        slate: {
+                            ink: '#332f2d',
+                        }
+                    },
+                    borderRadius: {
+                        'card': '28px',
+                        'inner-img': '20px',
+                        'pill': '9999px',
+                    },
+                    boxShadow: {
+                        'shop-sm': 'rgba(0, 0, 0, 0.06) 0px 2px 8px 0px',
+                        'shop-card': 'rgba(0, 0, 0, 0.08) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -2px',
+                        'shop-lg': 'rgba(0, 0, 0, 0.12) 0px 4px 24px 0px',
+                        'shop-violet': 'rgba(84, 51, 235, 0.34) 0px 4px 24px 0px',
+                    },
+                    letterSpacing: {
+                        'tighter-heading': '-0.05em',
+                        'tight-body': '-0.031em',
+                        'tight-meta': '-0.017em',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --color-canvas-mist: #f2f4f5;
+            --color-pure-white: #ffffff;
+            --color-ink-black: #000000;
+            --color-faint-border: #ebebeb;
+            --color-muted-gray: #787574;
+            --color-shop-violet: #5433eb;
+            --color-violet-wash: #c0b5f3;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--color-canvas-mist);
+            color: var(--color-ink-black);
+            letter-spacing: -0.031em;
+            -webkit-font-smoothing: antialiased;
+        }
+        .tab-content { display: none !important; }
+        .tab-content.active { display: block !important; }
+        #live-orders.tab-content.active { display: flex !important; }
+        .nav-link.active { background-color: #000000 !important; color: #ffffff !important; font-weight: 700; }
+        .filter-btn.active { background-color: #000000; color: #ffffff; font-weight: 700; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d6d9dc; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #b0b4b8; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm bg-[#f2f4f5] selection:bg-[#c0b5f3] selection:text-[#5433eb]">
+
+    <!-- Persistent 64px Sidebar Nav Rail -->
+    <aside aria-label="Operations Rail" class="w-16 bg-white shrink-0 flex flex-col items-center justify-between py-6 my-4 ml-4 rounded-[28px] border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] z-30 h-[calc(100vh-2rem)]">
+        <div class="flex flex-col items-center space-y-6">
+            <!-- Brand Mark -->
+            <button onclick="switchTab('live-orders')" title="shop. Sentinel Home" class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black text-black hover:opacity-80 transition-opacity">
+                <span class="text-[#000000] font-black text-xl tracking-tighter">s<span class="text-[#5433eb]">.</span></span>
+            </button>
+
+            <!-- Nav Icons -->
+            <div class="flex flex-col items-center space-y-3" id="nav-rail-icons">
+                <button onclick="switchTab('live-orders')" title="Orders to Ship" class="nav-link active relative w-11 h-11 rounded-[20px] bg-[#000000] text-white flex items-center justify-center transition-all hover:scale-105 shadow-sm" data-target="live-orders">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span id="rail-orders-badge" class="absolute -top-1 -right-1 bg-[#5433eb] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full min-w-[16px] text-center">0</span>
+                </button>
+
+                <button onclick="switchTab('dashboard')" title="Sales & Financials" class="nav-link w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all" data-target="dashboard">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                    </svg>
+                </button>
+
+                <button onclick="switchTab('the-bar')" title="Integrity Matrix & 'The Bar' ML Benchmarks" class="nav-link w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all" data-target="the-bar">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </button>
+
+                <button onclick="switchTab('kafka-stream')" title="Kafka & Live Keystrokes Stream" class="nav-link w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all" data-target="kafka-stream">
+                    <svg class="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </button>
+
+                <a href="/shop" target="_blank" title="Customer Storefront" class="w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#5433eb] flex items-center justify-center transition-all">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center space-y-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Gateway Online (&lt;1.5ms SLA)"></span>
+            <div class="w-8 h-8 rounded-full border border-[#ebebeb] bg-[#f2f4f5] flex items-center justify-center text-xs font-bold text-[#787574]">
+                🛡️
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col relative h-full overflow-y-auto px-4 md:px-8 py-4">
+        <div class="w-full max-w-7xl mx-auto h-full flex flex-col space-y-4">
+
+            <!-- Top Context Header Bar -->
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+                <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-1.5">
+                        <span class="text-2xl font-black text-[#000000] tracking-tighter">shop<span class="text-[#5433eb]">.</span></span>
+                        <span class="text-xs font-bold text-[#787574] uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-[#ebebeb] bg-white shadow-sm">Merchant Sentinel</span>
+                    </div>
+                    <span class="text-xs text-[#787574] font-mono hidden xl:inline">• Hub: Electronic City BLR</span>
+
+                    <!-- Direct Navigation Tab Pills -->
+                    <div class="hidden sm:flex items-center bg-white p-1 rounded-full border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] space-x-1 ml-3">
+                        <button onclick="switchTab('live-orders')" class="top-nav-tab active px-3.5 py-1 rounded-full text-xs font-bold bg-[#000000] text-white transition-all" data-tab="live-orders">
+                            📦 Orders to Ship
+                        </button>
+                        <button onclick="switchTab('dashboard')" class="top-nav-tab px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all" data-tab="dashboard">
+                            📊 Sales &amp; Financials
+                        </button>
+                        <button onclick="switchTab('the-bar')" class="top-nav-tab px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all" data-tab="the-bar">
+                            🛡️ Integrity Matrix
+                        </button>
+                        <button onclick="switchTab('kafka-stream')" class="top-nav-tab px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all" data-tab="kafka-stream">
+                            ⚡ Kafka &amp; Keystrokes
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2.5">
+                    <a href="/shop" target="_blank" class="h-9 px-4 rounded-full bg-white border border-[#ebebeb] text-[#000000] text-xs font-semibold shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] hover:border-[#5433eb] transition-all flex items-center space-x-1.5">
+                        <span>Open Storefront</span>
+                        <span>↗</span>
+                    </a>
+                    <button id="sim-btn" onclick="toggleSimulator()" class="h-9 px-4 rounded-full bg-[#000000] hover:bg-neutral-800 text-white text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5">
+                        <span id="sim-btn-text">Start Auto-Traffic</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB 1: Orders to Ship -->
+            <div id="live-orders" class="tab-content active space-y-4 flex-1 flex flex-col">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#ebebeb]">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl font-bold text-[#000000] tracking-[-0.05em]">Orders to Ship</h1>
+                            <span class="h-6 px-2.5 rounded-full bg-[#000000] text-white text-xs font-mono font-bold flex items-center justify-center" id="header-total-orders">0</span>
+                        </div>
+                        <p class="text-xs text-[#787574] mt-0.5">Real-time dispatch queue, 3PL delivery feedback, and automated fraud interception</p>
+                    </div>
+
+                    <!-- Segmented Filter Pills -->
+                    <div class="inline-flex items-center bg-white p-1 rounded-full border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px]">
+                        <button onclick="setOrderFilter('confirmed')" id="filter-btn-confirmed" class="filter-btn active h-8 px-4 rounded-full text-xs font-bold transition-all flex items-center space-x-1.5">
+                            <span>📦 Confirmed</span>
+                            <span id="filter-count-confirmed" class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+                        </button>
+                        <button onclick="setOrderFilter('prepaid')" id="filter-btn-prepaid" class="filter-btn h-8 px-4 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] transition-all flex items-center space-x-1.5">
+                            <span>💳 Prepaid</span>
+                            <span id="filter-count-prepaid" class="bg-indigo-100 text-[#5433eb] text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+                        </button>
+                        <button onclick="setOrderFilter('blocked')" id="filter-btn-blocked" class="filter-btn h-8 px-4 rounded-full text-xs font-medium text-[#787574] hover:text-rose-700 transition-all flex items-center space-x-1.5">
+                            <span>🚫 Blocked</span>
+                            <span id="filter-count-blocked" class="bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+                        </button>
+                        <button onclick="setOrderFilter('all')" id="filter-btn-all" class="filter-btn h-8 px-3.5 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] transition-all">
+                            All
+                        </button>
+                    </div>
+                </header>
+
+                <!-- 2-Column Workspace Grid -->
+                <div class="grid grid-cols-12 gap-6 flex-1 min-h-[500px]">
+                    <!-- Left: Orders List (5 cols) -->
+                    <div class="col-span-12 lg:col-span-5 flex flex-col bg-white rounded-[28px] border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-[#ebebeb] bg-white flex justify-between items-center">
+                            <span class="font-bold text-xs text-[#000000] uppercase tracking-wider" id="queue-header-title">Live Dispatch Queue</span>
+                            <span class="text-[11px] text-emerald-700 font-mono font-bold flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                                Live Sync
+                            </span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="live-order-feed">
+                            <div class="text-center py-20 text-[#787574] text-xs">Waiting for customer orders...</div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Order Inspector (7 cols) -->
+                    <div class="col-span-12 lg:col-span-7 flex flex-col bg-white rounded-[28px] border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] overflow-hidden">
+                        <div class="px-6 py-3.5 border-b border-[#ebebeb] bg-white flex justify-between items-center">
+                            <span class="font-bold text-xs text-[#000000] uppercase tracking-wider">Order Inspector &amp; Intelligence</span>
+                            <span id="detail-order-id" class="font-mono text-xs font-bold text-[#5433eb]">Select an order</span>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-6 space-y-5" id="order-detail-content">
+                            <div class="text-center py-24 text-[#787574] text-xs">
+                                👈 Select any order from the left queue to inspect AI risk parameters and record 3PL delivery feedback.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Sales & Financials -->
+            <div id="dashboard" class="tab-content hidden space-y-6">
+                <header class="pb-2 border-b border-[#ebebeb]">
+                    <h1 class="text-xl font-bold text-[#000000] tracking-[-0.05em]">Sales &amp; Financial Analytics</h1>
+                    <p class="text-xs text-[#787574] mt-0.5">Real-time revenue, gross margin protection, and Apache Flink stream telemetry</p>
+                </header>
+
+                <!-- 4 KPI Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Today's Confirmed GMV</div>
+                        <div class="text-2xl font-black text-[#000000] mt-2 font-mono" id="stat-today-sales">₹0</div>
+                        <div class="text-[11px] text-[#787574] mt-1"><span id="stat-today-orders-count" class="font-bold text-[#000000]">0</span> orders processed today</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">100% Prepaid Sales</div>
+                        <div class="text-2xl font-black text-[#5433eb] mt-2 font-mono" id="stat-prepaid-sales">₹0</div>
+                        <div class="text-[11px] text-[#787574] mt-1">Zero return shipping loss risk</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Safe Doorstep COD GMV</div>
+                        <div class="text-2xl font-black text-emerald-600 mt-2 font-mono" id="stat-safe-cod-sales">₹0</div>
+                        <div class="text-[11px] text-[#787574] mt-1">AI-verified low threat shoppers</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Courier Capital Saved</div>
+                        <div class="text-2xl font-black text-emerald-600 mt-2 font-mono" id="stat-capital-saved">₹0</div>
+                        <div class="text-[11px] text-[#787574] mt-1">Direct shipping losses prevented</div>
+                    </div>
+                </div>
+
+                <!-- Historical Order Ledger -->
+                <div class="bg-white rounded-[28px] border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] overflow-hidden">
+                    <div class="p-5 border-b border-[#ebebeb] flex justify-between items-center">
+                        <h2 class="text-xs font-bold text-[#000000] uppercase tracking-wider">Historical Transaction Ledger</h2>
+                        <span class="text-xs text-[#787574] font-mono">Live auto-sync with Supabase</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-[#ebebeb] bg-[#f2f4f5] text-[11px] font-bold text-[#787574] uppercase tracking-wider">
+                                    <th class="px-5 py-3.5">Order ID</th>
+                                    <th class="px-5 py-3.5">Customer</th>
+                                    <th class="px-5 py-3.5">Amount</th>
+                                    <th class="px-5 py-3.5">Payment Mode</th>
+                                    <th class="px-5 py-3.5">Fulfillment Status</th>
+                                    <th class="px-5 py-3.5">Destination Area</th>
+                                    <th class="px-5 py-3.5 text-right">Courier Loss Prevented</th>
+                                </tr>
+                            </thead>
+                            <tbody id="eval-table-body" class="divide-y divide-[#ebebeb] text-xs">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Integrity Matrix -->
+            <div id="the-bar" class="tab-content hidden space-y-6">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#ebebeb]">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl font-bold text-[#000000] tracking-[-0.05em]">Integrity Matrix — AI Benchmarks &amp; Defense Economics</h1>
+                            <span class="h-6 px-3 rounded-full bg-indigo-50 text-[#5433eb] border border-indigo-200 text-xs font-bold flex items-center">Supabase ML Ground Truth</span>
+                        </div>
+                        <p class="text-xs text-[#787574] mt-0.5">Live Bayesian evaluation combining Supabase held-out benchmark ($N=20,000$) with real-time merchant test checkouts</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="clearAllOrders()" class="h-9 px-4 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm">
+                            <span>🗑️ Clear Order DB</span>
+                        </button>
+                        <button id="recalc-btn" onclick="updateTheBarMetrics(true)" class="h-9 px-4 rounded-full bg-white hover:bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5">
+                            <span>🔄 Recalculate</span>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- 4 Performance Metric Cards with "The Bar" Benchmark Badges -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-2">
+                        <div>
+                            <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Precision (Fraud Interception)</div>
+                            <div class="text-3xl font-black text-emerald-600 mt-2 font-mono" id="met-precision">0.00%</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#ebebeb] flex items-center justify-between">
+                            <span id="badge-precision" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800">⏳ Awaiting Orders</span>
+                            <span class="text-[10px] text-[#787574]">Zero false block</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-2">
+                        <div>
+                            <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Recall on Real Threat Vectors</div>
+                            <div class="text-3xl font-black text-emerald-600 mt-2 font-mono" id="met-recall">0.00%</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#ebebeb] flex items-center justify-between">
+                            <span id="badge-recall" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800">⏳ Awaiting Orders</span>
+                            <span class="text-[10px] text-[#787574]">RTO interception</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-2">
+                        <div>
+                            <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">ROC-AUC Discriminator</div>
+                            <div class="text-3xl font-black text-[#5433eb] mt-2 font-mono" id="met-auc">0.0000</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#ebebeb] flex items-center justify-between">
+                            <span id="badge-auc" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800">⏳ Awaiting Orders</span>
+                            <span class="text-[10px] text-[#787574]">Rank separation</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-2">
+                        <div>
+                            <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">F1 Harmonic Score</div>
+                            <div class="text-3xl font-black text-[#000000] mt-2 font-mono" id="met-f1">0.0000</div>
+                        </div>
+                        <div class="pt-2 border-t border-[#ebebeb] flex items-center justify-between">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800">Balanced Performance</span>
+                            <span class="text-[10px] text-[#787574]">Precision &amp; Recall</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix & Store Economics -->
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Dynamic Confusion Matrix (5 cols) -->
+                    <div class="col-span-12 lg:col-span-5 bg-white rounded-[28px] p-6 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-[#ebebeb]">
+                            <div>
+                                <h3 class="text-xs font-bold text-[#000000] uppercase tracking-wider">4-Quadrant Confusion Matrix</h3>
+                                <p class="text-[10px] text-[#787574]">Live database feedback &amp; 3PL courier outcomes</p>
+                            </div>
+                            <span class="text-[10px] text-[#5433eb] font-bold font-mono" id="cm-total-n">Live N = 0</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 flex-1">
+                            <div class="bg-emerald-50 rounded-[20px] p-4 border border-emerald-200 flex flex-col justify-between">
+                                <div class="text-[11px] text-emerald-900 font-bold uppercase">True Positives (TP)</div>
+                                <div class="text-2xl font-black text-emerald-700 font-mono mt-1" id="cm-tp">0</div>
+                                <div class="text-[10px] text-emerald-700 mt-1">Intercepted Fake / RTO COD</div>
+                            </div>
+                            <div class="bg-indigo-50 rounded-[20px] p-4 border border-indigo-200 flex flex-col justify-between">
+                                <div class="text-[11px] text-indigo-900 font-bold uppercase">True Negatives (TN)</div>
+                                <div class="text-2xl font-black text-[#5433eb] font-mono mt-1" id="cm-tn">0</div>
+                                <div class="text-[10px] text-indigo-700 mt-1">Approved Genuine Buyers</div>
+                            </div>
+                            <div class="bg-amber-50 rounded-[20px] p-4 border border-amber-200 flex flex-col justify-between">
+                                <div class="text-[11px] text-amber-900 font-bold uppercase">False Positives (FP)</div>
+                                <div class="text-2xl font-black text-amber-700 font-mono mt-1" id="cm-fp">0</div>
+                                <div class="text-[10px] text-amber-700 mt-1">Recovered via UPI Step-Up</div>
+                            </div>
+                            <div class="bg-rose-50 rounded-[20px] p-4 border border-rose-200 flex flex-col justify-between">
+                                <div class="text-[11px] text-rose-900 font-bold uppercase">False Negatives (FN)</div>
+                                <div class="text-2xl font-black text-rose-700 font-mono mt-1" id="cm-fn">0</div>
+                                <div class="text-[10px] text-rose-700 mt-1">Logged 3PL Doorstep RTOs</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Store Economics & Net Capital Defense (7 cols) -->
+                    <div class="col-span-12 lg:col-span-7 bg-white rounded-[28px] p-6 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-4">
+                        <div class="pb-2 border-b border-[#ebebeb]">
+                            <h3 class="text-sm font-bold text-[#000000] tracking-[-0.05em]">Store Economics &amp; Margin Benchmark ("The Bar")</h3>
+                            <p class="text-xs text-[#787574]">Asymmetric cost function minimizing $\text{Loss} = (FN \times \text{Cost}_{RTO}) + (FP \times \text{Margin}_{Lost})$</p>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="p-3.5 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb]">
+                                <div class="text-[11px] text-[#787574] font-semibold">Cost of False Positive</div>
+                                <div class="text-lg font-black text-[#000000] font-mono mt-1" id="calc-fp-cost">₹0</div>
+                                <div class="text-[10px] text-[#787574]">Lost Gross Margin (30%)</div>
+                            </div>
+                            <div class="p-3.5 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb]">
+                                <div class="text-[11px] text-[#787574] font-semibold">Cost of False Negative</div>
+                                <div class="text-lg font-black text-rose-600 font-mono mt-1" id="calc-fn-cost">₹110</div>
+                                <div class="text-[10px] text-[#787574]">Round-trip courier loss</div>
+                            </div>
+                            <div class="p-3.5 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb]">
+                                <div class="text-[11px] text-[#787574] font-semibold">Asymmetric Ratio</div>
+                                <div class="text-lg font-black text-[#5433eb] font-mono mt-1" id="calc-ratio">0.00 : 1</div>
+                                <div class="text-[10px] text-[#787574]">Optimal Cost Tradeoff</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="p-4 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb] flex flex-col justify-between">
+                                <div class="text-xs font-bold text-[#000000]">Net Capital Saved (20k Scale)</div>
+                                <div class="text-[10px] text-[#787574] mt-0.5">Direct shipping loss prevented minus friction</div>
+                                <div class="text-2xl font-black text-emerald-600 font-mono mt-2" id="calc-net-savings">₹0</div>
+                            </div>
+                            <div class="p-4 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb] flex flex-col justify-between">
+                                <div class="text-xs font-bold text-[#000000]">Live Test Orders Saved</div>
+                                <div class="text-[10px] text-[#787574] mt-0.5">Realized protection from active test session</div>
+                                <div class="text-2xl font-black text-[#5433eb] font-mono mt-2" id="calc-realized-savings">₹0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Kafka & Keystroke Stream Engine -->
+            <div id="kafka-stream" class="tab-content hidden space-y-6">
+                <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#ebebeb]">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-xl font-bold text-[#000000] tracking-[-0.05em]">Kafka &amp; Real-Time Keystroke Telemetry Stream</h1>
+                            <span class="h-6 px-3 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+                                Kafka / Flink Engine
+                            </span>
+                        </div>
+                        <p class="text-xs text-[#787574] mt-0.5">Sub-second keystroke stream ingestion, dynamic H3 spatial burst clustering, and live sliding window aggregations</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="simulateTestKeystroke()" class="h-9 px-4 rounded-full bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm">
+                            <span>⚡ Inject Test Keystroke</span>
+                        </button>
+                        <a href="/shop" target="_blank" class="h-9 px-4 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm">
+                            <span>🛍️ Open Shop &amp; Type Live</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+                </header>
+
+                <!-- 4 KPI Stream Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Lifetime Stream Records</div>
+                        <div class="text-2xl font-black text-[#000000] mt-2 font-mono" id="kafka-total-events">0</div>
+                        <div class="text-[10px] text-[#787574] mt-1">Ingested via Kafka broker</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Active in 60s Window</div>
+                        <div class="text-2xl font-black text-[#5433eb] mt-2 font-mono" id="kafka-window-events">0</div>
+                        <div class="text-[10px] text-[#787574] mt-1">Flink sliding window state</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Stream Throughput</div>
+                        <div class="text-2xl font-black text-emerald-600 mt-2 font-mono" id="kafka-throughput">0.0 eps</div>
+                        <div class="text-[10px] text-[#787574] mt-1">Events per second</div>
+                    </div>
+
+                    <div class="bg-white rounded-[28px] p-5 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px]">
+                        <div class="text-xs text-[#787574] font-semibold uppercase tracking-wider">Active H3 Hexagons</div>
+                        <div class="text-2xl font-black text-[#000000] mt-2 font-mono" id="kafka-h3-bursts">0</div>
+                        <div class="text-[10px] text-[#787574] mt-1">Resolution-9 100m cells</div>
+                    </div>
+                </div>
+
+                <!-- Live Keystroke Radar & Active Session -->
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- Left: Active Typing Radar Card (6 cols) -->
+                    <div class="col-span-12 lg:col-span-6 bg-white rounded-[28px] p-6 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-[#ebebeb]">
+                            <div>
+                                <h3 class="text-sm font-bold text-[#000000] tracking-[-0.05em]">🔴 Real-Time Keystroke Telemetry Radar</h3>
+                                <p class="text-xs text-[#787574]">Direct websocket &amp; HTTP streaming as customer types in checkout form</p>
+                            </div>
+                            <span id="typing-live-indicator" class="h-7 px-3 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>Radar Listening</span>
+                            </span>
+                        </div>
+
+                        <!-- Active Typing Banner / Terminal -->
+                        <div class="p-5 bg-neutral-900 text-white rounded-[20px] font-mono text-xs space-y-3 shadow-inner flex-1 flex flex-col justify-between" id="active-typing-terminal">
+                            <div class="flex justify-between items-center border-b border-neutral-700 pb-2 text-[11px] text-neutral-400">
+                                <span>TOPIC: <strong class="text-amber-400">keystrokes.telemetry</strong></span>
+                                <span id="terminal-timestamp" class="text-emerald-400 font-bold">STREAM ONLINE</span>
+                            </div>
+                            <div class="space-y-2 py-2">
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-neutral-400">Shopper:</span>
+                                    <span id="term-name" class="text-white font-bold text-sm">Priya Sharma</span>
+                                    <span id="term-phone" class="text-neutral-400 text-xs">(9876543210)</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-neutral-400">Field Active:</span>
+                                    <span id="term-field" class="px-2 py-0.5 rounded bg-neutral-800 text-cyan-300 font-bold">cust-street</span>
+                                    <span class="text-neutral-400">Payment:</span>
+                                    <span id="term-pay" class="text-amber-300 font-bold">COD</span>
+                                </div>
+                                <div class="flex items-start space-x-2">
+                                    <span class="text-neutral-400 shrink-0">Live Address:</span>
+                                    <span id="term-address" class="text-emerald-300 font-semibold truncate">Flat 402, Green Glen Layout, Bellandur Outer Ring Road, Bengaluru 560103</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 pt-2 border-t border-neutral-800 text-[11px]">
+                                    <div>H3 Hex Cell: <span id="term-h3" class="text-[#c0b5f3] font-bold">89618925407ffff</span></div>
+                                    <div>Device Canvas: <span id="term-canvas" class="text-neutral-300">macOS Canvas 0.95</span></div>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-neutral-700 flex justify-between items-center text-[11px]">
+                                <span>Preliminary Risk Score:</span>
+                                <span id="term-risk-badge" class="px-2.5 py-0.5 rounded-full font-bold bg-emerald-900 text-emerald-300 border border-emerald-700">🟢 Score 15 (Safe)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Processed Kafka Order Stream (6 cols) -->
+                    <div class="col-span-12 lg:col-span-6 bg-white rounded-[28px] p-6 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-[#ebebeb]">
+                            <div>
+                                <h3 class="text-sm font-bold text-[#000000] tracking-[-0.05em]">Processed Kafka Order Stream</h3>
+                                <p class="text-xs text-[#787574]">Live transactional events partitioned across Kafka broker topics</p>
+                            </div>
+                            <span class="h-7 px-3 rounded-full bg-indigo-50 text-[#5433eb] border border-indigo-200 text-xs font-semibold flex items-center">Topic Sync Active</span>
+                        </div>
+
+                        <!-- Live Order Sequence Feed -->
+                        <div class="space-y-2 flex-1 flex flex-col">
+                            <div class="text-xs font-bold text-[#787574] uppercase tracking-wider">Live Event Stream Sequence (Kafka &rarr; Flink &rarr; Redis)</div>
+                            <div class="space-y-2 font-mono text-xs max-h-80 overflow-y-auto flex-1 p-3 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb]" id="kafka-stream-records-list">
+                                <div class="text-[#787574] text-xs p-2">Waiting for live order stream records...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Merchant Printable Invoice Modal -->
+    <div id="merchant-invoice-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-[28px] max-w-2xl w-full p-8 shadow-2xl border border-[#ebebeb] my-8 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-[#ebebeb]">
+                <span class="font-bold text-xs text-[#000000] uppercase tracking-wider">Official GST E-Commerce Tax Invoice</span>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="h-8 px-4 rounded-full bg-[#000000] hover:bg-neutral-800 text-white text-xs font-bold transition-all shadow-sm flex items-center space-x-1">
+                        <span>🖨️ Print Invoice</span>
+                    </button>
+                    <button onclick="closeMerchantInvoiceModal()" class="w-8 h-8 rounded-full bg-[#f2f4f5] text-[#000000] font-bold text-sm flex items-center justify-center hover:bg-[#ebebeb]">&times;</button>
+                </div>
+            </div>
+            
+            <div id="merchant-invoice-print-area">
+                <!-- Generated dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        const API_BASE = window.location.origin || 'http://localhost:8000';
+        let allOrdersCache = [];
+        let currentActiveOrder = null;
+        let currentFilter = 'confirmed';
+        let simulatorRunning = false;
+
+        const showToast = (message, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            if(!container) return;
+            const toast = document.createElement('div');
+            let bgClass = 'bg-neutral-900 border-neutral-700 text-white';
+            if(type === 'success') bgClass = 'bg-emerald-900 border-emerald-700 text-white';
+            else if(type === 'warning') bgClass = 'bg-amber-900 border-amber-700 text-white';
+            toast.className = `pointer-events-auto px-4 py-3 rounded-[20px] border shadow-2xl text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 ${bgClass} flex items-center space-x-2`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+
+        const formatCurrency = (val) => '₹' + Math.round(val).toLocaleString('en-IN');
+        const formatNumber = (val) => Number(val).toLocaleString('en-IN');
+
+        const switchTab = (tabId) => {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('active', 'bg-[#000000]', 'text-white', 'shadow-sm');
+                el.classList.add('text-[#787574]');
+            });
+            document.querySelectorAll('.top-nav-tab').forEach(el => {
+                el.classList.remove('active', 'bg-[#000000]', 'text-white', 'font-bold');
+                el.classList.add('text-[#787574]', 'font-medium');
+            });
+
+            const targetContent = document.getElementById(tabId);
+            if(targetContent) {
+                targetContent.classList.remove('hidden');
+                targetContent.classList.add('active');
+            }
+
+            const navBtn = document.querySelector(`.nav-link[data-target="${tabId}"]`);
+            if(navBtn) {
+                navBtn.classList.remove('text-[#787574]');
+                navBtn.classList.add('active', 'bg-[#000000]', 'text-white', 'shadow-sm');
+            }
+
+            const topTab = document.querySelector(`.top-nav-tab[data-tab="${tabId}"]`);
+            if(topTab) {
+                topTab.classList.remove('text-[#787574]', 'font-medium');
+                topTab.classList.add('active', 'bg-[#000000]', 'text-white', 'font-bold');
+            }
+        };
+
+        const setOrderFilter = (filterName) => {
+            currentFilter = filterName;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById(`filter-btn-${filterName}`);
+            if(activeBtn) activeBtn.classList.add('active');
+            renderFeedFromCache();
+        };
+
+        const updateOrders = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/orders?limit=50`);
+                if(res.ok) {
+                    const data = await res.json();
+                    allOrdersCache = data || [];
+                    const headerTotal = document.getElementById('header-total-orders');
+                    const railBadge = document.getElementById('rail-orders-badge');
+                    if(headerTotal) headerTotal.textContent = allOrdersCache.length;
+                    if(railBadge) railBadge.textContent = allOrdersCache.length;
+                    renderFeedFromCache();
+                    if(!currentActiveOrder && allOrdersCache.length > 0) {
+                        renderOrderDetails(allOrdersCache[0]);
+                    }
+                }
+            } catch(e) { console.error('Orders poll error:', e); }
+        };
+
+        const renderFeedFromCache = () => {
+            const feedContainer = document.getElementById('live-order-feed');
+            const tableBody = document.getElementById('eval-table-body');
+            if(!feedContainer) return;
+
+            let filtered = allOrdersCache;
+            if(currentFilter === 'confirmed') {
+                filtered = allOrdersCache.filter(o => (o.payment_status === 'PAID_ONLINE' || o.payment_status === 'DEPOSIT_PAID' || o.action === 'ALLOW'));
+            } else if(currentFilter === 'prepaid') {
+                filtered = allOrdersCache.filter(o => (o.payment_status === 'PAID_ONLINE' || o.payment_status === 'DEPOSIT_PAID'));
+            } else if(currentFilter === 'blocked') {
+                filtered = allOrdersCache.filter(o => ((o.action === 'BLOCK' || o.action === 'FORCE_PREPAID') && o.payment_status !== 'PAID_ONLINE'));
+            }
+
+            if(filtered.length === 0) {
+                feedContainer.innerHTML = `<div class="text-center py-20 text-[#787574] text-xs">No orders in this filter view.</div>`;
+            } else {
+                feedContainer.innerHTML = filtered.map(order => {
+                    const score = order.risk_score || 0;
+                    const amtInr = (order.amount_paise || 0) / 100;
+                    const area = order.area_name || order.matched_locality || `Pin ${order.pincode}`;
+                    const payStatus = order.payment_status || 'COD_PENDING';
+                    const shipping = order.shipping_logistics || { total_round_trip_loss_inr: 110, shipping_zone: 'Local' };
+
+                    let statusPill = '';
+                    if(payStatus === 'PAID_ONLINE') {
+                        statusPill = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-[#5433eb] border border-indigo-200">💳 Paid UPI</span>`;
+                    } else if(payStatus === 'DEPOSIT_PAID') {
+                        statusPill = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">💎 ₹49 Deposit</span>`;
+                    } else if(payStatus === 'PAYMENT_FAILED' || ((order.action === 'BLOCK' || order.action === 'FORCE_PREPAID') && payStatus !== 'PAID_ONLINE')) {
+                        statusPill = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">🚫 COD Blocked</span>`;
+                    } else if(score <= 30) {
+                        statusPill = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">🟢 Safe COD</span>`;
+                    } else {
+                        statusPill = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">🟡 Step-Up</span>`;
+                    }
+
+                    let outcomePill = '';
+                    if(order.delivery_outcome === 'DELIVERED') {
+                        outcomePill = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">✅ Delivered</span>`;
+                    } else if(order.delivery_outcome === 'RTO') {
+                        outcomePill = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">↩️ RTO</span>`;
+                    }
+
+                    const isSelected = currentActiveOrder && currentActiveOrder.order_id === order.order_id;
+
+                    return `
+                        <div onclick="renderOrderDetailsById('${order.order_id}')" class="p-4 rounded-[20px] border transition-all cursor-pointer ${isSelected ? 'bg-indigo-50/50 border-l-4 border-l-[#5433eb] border-indigo-200 shadow-sm' : 'bg-white border-[#ebebeb] hover:border-neutral-300 hover:shadow-sm'}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="flex items-center space-x-1.5">
+                                        <span class="font-mono font-bold text-xs text-[#000000]">${order.order_id}</span>
+                                        <span class="text-[#787574]">•</span>
+                                        <span class="font-bold text-xs text-[#000000]">${order.customer_name || 'Customer'}</span>
+                                        ${outcomePill}
+                                    </div>
+                                    <div class="text-[11px] text-[#787574] mt-1 flex items-center space-x-1.5">
+                                        <span>📍 ${area}</span>
+                                        <span class="text-[#ebebeb]">•</span>
+                                        <span class="font-mono text-[10px] text-[#787574]">${shipping.shipping_zone}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right space-y-1 flex flex-col items-end">
+                                    <span class="font-extrabold text-sm text-[#000000] font-mono">${formatCurrency(amtInr)}</span>
+                                    ${statusPill}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Table rendering for Dashboard tab
+            if(tableBody) {
+                tableBody.innerHTML = allOrdersCache.slice(0, 25).map(order => {
+                    const amtInr = (order.amount_paise || 0) / 100;
+                    const area = order.area_name || order.matched_locality || `Pin ${order.pincode}`;
+                    const payStatus = order.payment_status || 'COD_PENDING';
+                    const score = order.risk_score || 0;
+                    const shipping = order.shipping_logistics || { total_round_trip_loss_inr: 110, shipping_zone: 'Local' };
+
+                    let statusBadge = '';
+                    if(order.delivery_outcome === 'DELIVERED') statusBadge = '<span class="text-emerald-700 font-bold">✅ Delivered</span>';
+                    else if(order.delivery_outcome === 'RTO') statusBadge = '<span class="text-rose-700 font-bold">↩️ RTO Returned</span>';
+                    else if(payStatus === 'PAID_ONLINE') statusBadge = '<span class="text-[#5433eb] font-bold">💳 Paid Online</span>';
+                    else if(payStatus === 'DEPOSIT_PAID') statusBadge = '<span class="text-emerald-700 font-bold">💎 ₹49 Deposit</span>';
+                    else if(score <= 30) statusBadge = '<span class="text-emerald-700 font-bold">🟢 Safe COD</span>';
+                    else if(score <= 70) statusBadge = '<span class="text-amber-700 font-bold">🟡 Deposit Requested</span>';
+                    else statusBadge = '<span class="text-rose-700 font-bold">🚫 Blocked Fake</span>';
+
+                    return `
+                        <tr class="bg-white hover:bg-[#f2f4f5] cursor-pointer transition-colors" onclick="switchTab('live-orders'); renderOrderDetailsById('${order.order_id}');">
+                            <td class="px-5 py-3.5 font-mono text-xs text-[#000000] font-bold">${order.order_id}</td>
+                            <td class="px-5 py-3.5 font-bold text-[#000000]">${order.customer_name || 'Customer'}</td>
+                            <td class="px-5 py-3.5 font-black text-[#000000] font-mono">${formatCurrency(amtInr)}</td>
+                            <td class="px-5 py-3.5 font-semibold text-[#5433eb]">${order.payment_method || 'COD'}</td>
+                            <td class="px-5 py-3.5">${statusBadge}</td>
+                            <td class="px-5 py-3.5 text-[#787574]">${area}</td>
+                            <td class="px-5 py-3.5 text-right font-mono text-emerald-700 font-bold">₹${shipping.total_round_trip_loss_inr}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        };
+
+        const renderOrderDetailsById = (orderId) => {
+            const order = allOrdersCache.find(o => o.order_id === orderId);
+            if(order) renderOrderDetails(order);
+        };
+
+        const recordOrderOutcome = async (orderId, outcome) => {
+            try {
+                const res = await fetch(`${API_BASE}/api/orders/${orderId}/outcome`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ outcome: outcome })
+                });
+                if(res.ok) {
+                    const target = allOrdersCache.find(o => o.order_id === orderId);
+                    if(target) {
+                        target.delivery_outcome = outcome;
+                    }
+                    if(currentActiveOrder && currentActiveOrder.order_id === orderId) {
+                        currentActiveOrder.delivery_outcome = outcome;
+                        renderOrderDetails(currentActiveOrder);
+                    }
+                    renderFeedFromCache();
+                    await updateTheBarMetrics();
+                    await updateStats();
+                    showToast(outcome === 'DELIVERED' ? `✅ Order ${orderId} marked as DELIVERED — Integrity Matrix updated in real-time!` : `↩️ Order ${orderId} recorded as RTO — Integrity Matrix updated in real-time!`, outcome === 'DELIVERED' ? 'success' : 'warning');
+                }
+            } catch(e) {
+                console.error('Failed to update delivery outcome:', e);
+            }
+        };
+
+        const renderOrderDetails = (order) => {
+            currentActiveOrder = order;
+            renderFeedFromCache();
+
+            const panel = document.getElementById('order-detail-content');
+            const idHeader = document.getElementById('detail-order-id');
+            if(!panel) return;
+
+            idHeader.textContent = `${order.order_id}`;
+
+            const amtInr = (order.amount_paise || 0) / 100;
+            const score = order.risk_score || 0;
+            const area = order.area_name || order.matched_locality || `Pin ${order.pincode}`;
+            const shipping = order.shipping_logistics || { total_round_trip_loss_inr: 110, shipping_zone: 'Local Intra-City (Bengaluru Hub)', warehouse_hub: 'Electronic City Center', forward_shipping_inr: 70 };
+            const invoice = order.invoice || {};
+            const outcome = order.delivery_outcome;
+            const payStatus = order.payment_status || 'COD_PENDING';
+
+            let statusHeaderHtml = '';
+            if(payStatus === 'PAID_ONLINE') {
+                statusHeaderHtml = `
+                    <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-[20px] flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full bg-[#5433eb] text-white flex items-center justify-center font-bold text-sm shadow-sm">💳</div>
+                            <div>
+                                <div class="font-bold text-xs text-indigo-950">Prepaid Order Verified (UPI Intent)</div>
+                                <div class="text-[11px] text-indigo-700">100% Guaranteed Revenue • Zero return shipping risk</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-white border border-indigo-200 text-[#5433eb] font-bold text-xs rounded-full shadow-sm">READY TO PACK</span>
+                    </div>
+                `;
+            } else if(payStatus === 'DEPOSIT_PAID') {
+                statusHeaderHtml = `
+                    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-[20px] flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">💎</div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-950">₹49 Verification Deposit Paid</div>
+                                <div class="text-[11px] text-emerald-700">Doorstep COD balance due: <strong>${formatCurrency(amtInr - 49)}</strong></div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-white border border-emerald-200 text-emerald-800 font-bold text-xs rounded-full shadow-sm">DISPATCH COD</span>
+                    </div>
+                `;
+            } else if(score <= 30) {
+                statusHeaderHtml = `
+                    <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-[20px] flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">✓</div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-950">Safe Cash on Delivery Approved</div>
+                                <div class="text-[11px] text-emerald-700">Verified buyer profile • Collect ${formatCurrency(amtInr)} at doorstep</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-white border border-emerald-200 text-emerald-800 font-bold text-xs rounded-full shadow-sm">READY TO PACK</span>
+                    </div>
+                `;
+            } else {
+                statusHeaderHtml = `
+                    <div class="p-4 bg-rose-50 border border-rose-200 rounded-[20px] flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-9 h-9 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">✕</div>
+                            <div>
+                                <div class="font-bold text-xs text-rose-950">Cash on Delivery Blocked (Risk Score: ${score})</div>
+                                <div class="text-[11px] text-rose-700">Saved ₹${shipping.total_round_trip_loss_inr} round-trip courier shipping loss</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 bg-white border border-rose-200 text-rose-700 font-bold text-xs rounded-full shadow-sm">DO NOT SHIP</span>
+                    </div>
+                `;
+            }
+
+            panel.innerHTML = `
+                ${statusHeaderHtml}
+
+                <!-- 3PL Logistics Outcome Controls -->
+                <div class="p-4 bg-[#000000] text-white rounded-[20px] shadow-sm space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-[#ffffff] uppercase tracking-wider text-[11px]">3PL Delivery Outcome Status:</span>
+                        <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full font-mono ${outcome === 'DELIVERED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : (outcome === 'RTO' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-neutral-800 text-[#787574]')}">
+                            ${outcome === 'DELIVERED' ? '✅ DELIVERED' : (outcome === 'RTO' ? '↩️ RTO RETURNED' : '⏳ In Transit / Awaiting Outcome')}
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="recordOrderOutcome('${order.order_id}', 'DELIVERED')" class="h-10 rounded-full text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${outcome === 'DELIVERED' ? 'bg-emerald-600 text-white shadow' : 'bg-neutral-900 hover:bg-neutral-800 text-emerald-400 border border-neutral-700'}">
+                            <span>✅ Mark as Delivered</span>
+                        </button>
+                        <button onclick="recordOrderOutcome('${order.order_id}', 'RTO')" class="h-10 rounded-full text-xs font-bold transition-all flex items-center justify-center space-x-1.5 ${outcome === 'RTO' ? 'bg-rose-600 text-white shadow' : 'bg-neutral-900 hover:bg-neutral-800 text-rose-400 border border-neutral-700'}">
+                            <span>↩️ Mark as RTO</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer & Logistics Details -->
+                <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div class="p-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-[20px] space-y-1">
+                        <div class="font-bold text-[#787574] text-[10px] uppercase tracking-wider">Customer &amp; Destination</div>
+                        <div class="font-bold text-[#000000] text-sm">${order.customer_name || 'Customer'}</div>
+                        <div class="text-[#787574] font-mono text-[11px]">📞 +91 ${order.customer_phone || '9876543210'}</div>
+                        <div class="text-[#787574] text-[11px] pt-0.5 leading-relaxed">${order.raw_address || area}</div>
+                        <div class="pt-1 flex items-center space-x-1 font-mono text-[10px] text-amber-800 font-bold">
+                            <span>H3 Cell:</span>
+                            <span>${order.h3_cell || order.h3_index_res9 || '8961892540bffff'}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-[20px] space-y-1">
+                        <div class="font-bold text-[#787574] text-[10px] uppercase tracking-wider">Logistics &amp; Economics</div>
+                        <div class="font-bold text-[#000000] text-sm">${shipping.shipping_zone || 'Local Intra-City'}</div>
+                        <div class="text-[#787574] text-[11px]">Hub: <strong class="text-[#000000]">${shipping.warehouse_hub || 'Electronic City Center'}</strong></div>
+                        <div class="text-[#787574] text-[11px]">Forward Cost: <strong class="text-[#000000]">₹${shipping.forward_shipping_inr || 70}</strong></div>
+                        <div class="pt-1 text-emerald-700 font-bold text-[11px]">Courier Loss Prevented: ₹${shipping.total_round_trip_loss_inr || 110}</div>
+                    </div>
+                </div>
+
+                <!-- Explainable ML Rationale -->
+                <div class="p-4 bg-white border border-[#ebebeb] rounded-[20px] space-y-2 shadow-sm text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-[#787574] text-[10px] uppercase tracking-wider">Explainable AI &amp; Risk Evaluation</span>
+                        <span class="font-mono text-xs font-bold text-[#000000]">Score: ${score} / 100</span>
+                    </div>
+                    <div class="w-full bg-[#f2f4f5] rounded-full h-2 overflow-hidden">
+                        <div class="h-full ${score <= 30 ? 'bg-emerald-500' : (score <= 70 ? 'bg-amber-500' : 'bg-rose-500')}" style="width: ${Math.max(5, score)}%"></div>
+                    </div>
+                    <div class="space-y-1 pt-1 text-[#000000] text-[11px] leading-relaxed">
+                        <div><strong>Action:</strong> ${order.what_action || 'Order evaluated by LightGBM model.'}</div>
+                        <div class="text-[#787574]"><strong>Rationale:</strong> ${order.why_reason || 'Evaluated against historical buyer signals and Uber H3 spatial density.'}</div>
+                    </div>
+                </div>
+
+                <!-- Itemized Cart & Tax Invoice Action -->
+                <div class="p-4 bg-white border border-[#ebebeb] rounded-[20px] space-y-3 shadow-sm text-xs">
+                    <div class="flex justify-between items-center border-b border-[#ebebeb] pb-2">
+                        <span class="font-bold text-[#000000] text-xs">Cart Items &amp; Digital Invoice</span>
+                        <span class="font-mono font-black text-sm text-[#000000]">${formatCurrency(amtInr)}</span>
+                    </div>
+                    
+                    <div class="space-y-1.5">
+                        ${(order.items || [{ name: 'Item', quantity: 1, price_paise: order.amount_paise }]).map(it => `
+                            <div class="flex justify-between items-center text-[11px]">
+                                <span class="text-[#000000] font-semibold">${it.name} <span class="text-[#787574] font-mono text-[10px]">&times; ${it.quantity}</span></span>
+                                <span class="font-mono font-bold text-[#000000]">${formatCurrency(((it.price_paise || it.unit_price_paise || 0) * it.quantity) / 100)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="pt-2 border-t border-[#ebebeb] flex justify-between items-center">
+                        <button onclick="openMerchantInvoiceModal('${order.order_id}')" class="h-9 px-4 rounded-full bg-[#000000] hover:bg-neutral-800 text-white font-bold text-[11px] flex items-center space-x-1.5 transition-all shadow-sm">
+                            <span>📄 View Official GST Tax Invoice</span>
+                        </button>
+                        <span class="text-[10px] font-mono text-[#787574]">Digitally Verified</span>
+                    </div>
+                </div>
+            `;
+        };
+
+        const updateStats = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/stats`);
+                if(res.ok) {
+                    const data = await res.json();
+                    
+                    document.getElementById('stat-today-sales').textContent = formatCurrency((data.today_sales_paise || 0) / 100);
+                    document.getElementById('stat-today-orders-count').textContent = formatNumber(data.today_orders_count || 0);
+                    document.getElementById('stat-prepaid-sales').textContent = formatCurrency((data.prepaid_sales_paise || 0) / 100);
+                    document.getElementById('stat-safe-cod-sales').textContent = formatCurrency((data.safe_cod_sales_paise || 0) / 100);
+                    document.getElementById('stat-capital-saved').textContent = formatCurrency((data.capital_saved_paise || 0) / 100);
+
+                    const confirmedCount = data.confirmed_orders_count || 0;
+                    const prepaidCount = data.prepaid_count || 0;
+                    const blockedCount = data.blocked_attempts_count || 0;
+
+                    document.getElementById('filter-count-confirmed').textContent = confirmedCount;
+                    document.getElementById('filter-count-prepaid').textContent = prepaidCount;
+                    document.getElementById('filter-count-blocked').textContent = blockedCount;
+                }
+            } catch(e) { console.error('Stats poll error:', e); }
+        };
+
+        const updateTheBarMetrics = async (isManual = false) => {
+            const btn = document.getElementById('recalc-btn');
+            if(isManual && btn) {
+                btn.innerHTML = `<span>🔄 Calculating...</span>`;
+                btn.classList.add('opacity-75');
+            }
+            try {
+                const res = await fetch(`${API_BASE}/api/the-bar/metrics`);
+                if(res.ok) {
+                    const data = await res.json();
+                    
+                    if(data.metrics) {
+                        const prec = data.metrics.precision != null ? data.metrics.precision : 0;
+                        const rec = data.metrics.recall != null ? data.metrics.recall : 0;
+                        const auc = data.metrics.roc_auc != null ? data.metrics.roc_auc : 0;
+                        const f1 = data.metrics.f1_score != null ? data.metrics.f1_score : 0;
+
+                        document.getElementById('met-precision').textContent = prec.toFixed(2) + '%';
+                        document.getElementById('met-recall').textContent = rec.toFixed(2) + '%';
+                        document.getElementById('met-auc').textContent = auc.toFixed(4);
+                        document.getElementById('met-f1').textContent = f1.toFixed(4);
+
+                        const comp = data.metrics.the_bar_compliance || {};
+                        const pBadge = document.getElementById('badge-precision');
+                        const rBadge = document.getElementById('badge-recall');
+                        const aBadge = document.getElementById('badge-auc');
+                        const totalLive = data.live_orders_evaluated || 0;
+
+                        if(pBadge) {
+                            if(comp.precision_target_met) {
+                                pBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800';
+                                pBadge.textContent = '✅ Target ≥ 88% Met';
+                            } else if(totalLive > 0 && prec > 0) {
+                                pBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800';
+                                pBadge.textContent = '⚠️ Below Target';
+                            } else {
+                                pBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800';
+                                pBadge.textContent = '⏳ Awaiting Orders';
+                            }
+                        }
+                        if(rBadge) {
+                            if(comp.recall_target_met) {
+                                rBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800';
+                                rBadge.textContent = '✅ Target ≥ 82% Met';
+                            } else if(totalLive > 0 && rec > 0) {
+                                rBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800';
+                                rBadge.textContent = '⚠️ Below Target';
+                            } else {
+                                rBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800';
+                                rBadge.textContent = '⏳ Awaiting Orders';
+                            }
+                        }
+                        if(aBadge) {
+                            if(comp.roc_auc_target_met) {
+                                aBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-[#5433eb]';
+                                aBadge.textContent = '✅ Target ≥ 0.9100 Met';
+                            } else if(totalLive > 0 && auc > 0) {
+                                aBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800';
+                                aBadge.textContent = '⚠️ Below Target';
+                            } else {
+                                aBadge.className = 'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-800';
+                                aBadge.textContent = '⏳ Awaiting Orders';
+                            }
+                        }
+                    }
+
+                    const cm = (data.metrics && data.metrics.confusion_matrix) || data.confusion_matrix || {};
+                    const tp = cm.true_positives != null ? cm.true_positives : 0;
+                    const tn = cm.true_negatives != null ? cm.true_negatives : 0;
+                    const fp = cm.false_positives != null ? cm.false_positives : 0;
+                    const fn = cm.false_negatives != null ? cm.false_negatives : 0;
+
+                    document.getElementById('cm-tp').textContent = formatNumber(tp);
+                    document.getElementById('cm-tn').textContent = formatNumber(tn);
+                    document.getElementById('cm-fp').textContent = formatNumber(fp);
+                    document.getElementById('cm-fn').textContent = formatNumber(fn);
+
+                    const totalNEl = document.getElementById('cm-total-n');
+                    if(totalNEl) {
+                        totalNEl.textContent = `Live Evaluated Orders: ${formatNumber(tp + tn + fp + fn)}`;
+                    }
+
+                    const econ = data.store_economics || {};
+                    document.getElementById('calc-fp-cost').textContent = '₹' + (econ.fp_cost_inr != null ? econ.fp_cost_inr : 0);
+                    document.getElementById('calc-fn-cost').textContent = '₹' + (econ.fn_cost_inr != null ? econ.fn_cost_inr : 110);
+                    document.getElementById('calc-ratio').textContent = (econ.cost_ratio != null ? econ.cost_ratio : 0) + ' : 1';
+                    
+                    const netSavings = (econ.net_savings_on_20k_orders_inr != null ? econ.net_savings_on_20k_orders_inr : 0);
+                    document.getElementById('calc-net-savings').textContent = '₹' + netSavings.toLocaleString('en-IN');
+
+                    const realizedEl = document.getElementById('calc-realized-savings');
+                    if(realizedEl) {
+                        const realized = econ.realized_savings_inr != null ? econ.realized_savings_inr : 0;
+                        realizedEl.textContent = '₹' + Math.max(0, realized).toLocaleString('en-IN');
+                    }
+
+                    if(isManual) {
+                        showToast('✨ Integrity Matrix recalculated from live database records!', 'success');
+                    }
+                }
+            } catch(e) { console.error('Integrity matrix poll error:', e); }
+            finally {
+                if(isManual && btn) {
+                    btn.innerHTML = `<span>🔄 Recalculate</span>`;
+                    btn.classList.remove('opacity-75');
+                }
+            }
+        };
+
+        const updateStreamMetrics = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/api/stream/realtime`);
+                if(res.ok) {
+                    const data = await res.json();
+                    
+                    // Dashboard KPIs
+                    const totalEl = document.getElementById('stream-total-events');
+                    const windowEl = document.getElementById('stream-window-events');
+                    const tputEl = document.getElementById('stream-throughput');
+                    const burstsEl = document.getElementById('stream-h3-bursts');
+
+                    const totalCount = data.lifetime_stream_records || data.total_lifetime_events || 0;
+                    const windowCount = data.active_events_in_window || data.events_in_active_window || 0;
+                    const tputValue = data.throughput_eps || data.throughput_events_per_sec || 0;
+                    const h3Count = data.active_h3_spatial_cells || data.active_h3_cells_in_window || 0;
+
+                    if(totalEl) totalEl.textContent = formatNumber(totalCount);
+                    if(windowEl) windowEl.textContent = formatNumber(windowCount);
+                    if(tputEl) tputEl.textContent = tputValue.toFixed(1) + ' eps';
+                    if(burstsEl) burstsEl.textContent = formatNumber(h3Count);
+
+                    // Dedicated Kafka Tab KPIs
+                    const kTotal = document.getElementById('kafka-total-events');
+                    const kWindow = document.getElementById('kafka-window-events');
+                    const kTput = document.getElementById('kafka-throughput');
+                    const kBursts = document.getElementById('kafka-h3-bursts');
+
+                    if(kTotal) kTotal.textContent = formatNumber(totalCount);
+                    if(kWindow) kWindow.textContent = formatNumber(windowCount);
+                    if(kTput) kTput.textContent = tputValue.toFixed(1) + ' eps';
+                    if(kBursts) kBursts.textContent = formatNumber(h3Count);
+
+                    // Live Keystroke Radar & Active Sessions
+                    const typingSessions = data.active_typing_sessions || data.typing_streams || [];
+                    const typingHistory = data.recent_typing_history || [];
+                    const latestTyping = typingSessions.length > 0 ? typingSessions[0] : (typingHistory.length > 0 ? typingHistory[0] : null);
+
+                    if(latestTyping) {
+                        const termName = document.getElementById('term-name');
+                        const termPhone = document.getElementById('term-phone');
+                        const termField = document.getElementById('term-field');
+                        const termPay = document.getElementById('term-pay');
+                        const termAddr = document.getElementById('term-address');
+                        const termH3 = document.getElementById('term-h3');
+                        const termCanvas = document.getElementById('term-canvas');
+                        const termRisk = document.getElementById('term-risk-badge');
+                        const termTime = document.getElementById('terminal-timestamp');
+
+                        if(termName) termName.textContent = latestTyping.customer_name || 'Shopper';
+                        if(termPhone) termPhone.textContent = `(${latestTyping.customer_phone || '9876543210'})`;
+                        if(termField) termField.textContent = latestTyping.field_modified || 'address';
+                        if(termPay) termPay.textContent = latestTyping.payment_method || 'COD';
+                        if(termAddr) termAddr.textContent = latestTyping.raw_address || 'Bengaluru 560103';
+                        if(termH3) termH3.textContent = latestTyping.h3_index_res9 || '89618925407ffff';
+                        if(termCanvas) termCanvas.textContent = latestTyping.device_canvas || 'macOS Canvas 0.95';
+                        if(termTime) termTime.textContent = (latestTyping.iso_time ? latestTyping.iso_time + ' UTC' : 'LIVE STREAM ACTIVE');
+
+                        if(termRisk) {
+                            const score = latestTyping.preliminary_risk_score || 15;
+                            const action = latestTyping.preliminary_action || 'ALLOW';
+                            if(action === 'BLOCK' || score > 70) {
+                                termRisk.className = 'px-2.5 py-0.5 rounded-full font-bold bg-rose-900 text-rose-300 border border-rose-700';
+                                termRisk.textContent = `🔴 Score ${score} (High Threat / Bot)`;
+                            } else if(action === 'CHALLENGE_DEPOSIT' || score > 30) {
+                                termRisk.className = 'px-2.5 py-0.5 rounded-full font-bold bg-amber-900 text-amber-300 border border-amber-700';
+                                termRisk.textContent = `🟡 Score ${score} (₹49 Step-up)`;
+                            } else {
+                                termRisk.className = 'px-2.5 py-0.5 rounded-full font-bold bg-emerald-900 text-emerald-300 border border-emerald-700';
+                                termRisk.textContent = `🟢 Score ${score} (Safe Shopper)`;
+                            }
+                        }
+                    }
+
+                    // Keystroke History Table
+                    const historyTbody = document.getElementById('keystroke-history-tbody');
+                    if(historyTbody && typingHistory.length > 0) {
+                        historyTbody.innerHTML = typingHistory.slice(0, 10).map(t => {
+                            const score = t.preliminary_risk_score || 15;
+                            const action = t.preliminary_action || 'ALLOW';
+                            let actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-100 text-emerald-800">ALLOW (15)</span>`;
+                            if(action === 'BLOCK' || score > 70) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-800">BLOCK (${score})</span>`;
+                            else if(action === 'CHALLENGE_DEPOSIT' || score > 30) actionBadge = `<span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-800">STEP-UP (${score})</span>`;
+
+                            return `
+                                <tr class="hover:bg-[#f2f4f5] transition-colors">
+                                    <td class="py-2 px-3 font-mono text-[11px] text-[#787574]">${t.iso_time || 'Just now'}</td>
+                                    <td class="py-2 px-3 font-bold text-[#000000]">${t.customer_name || 'Shopper'}</td>
+                                    <td class="py-2 px-3 font-mono text-[11px] text-[#5433eb]">${t.field_modified || 'address'}</td>
+                                    <td class="py-2 px-3 text-[#787574] text-[11px] truncate max-w-[180px]">${t.area_name || t.pincode}</td>
+                                    <td class="py-2 px-3 text-right">${actionBadge}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+
+                    // Stream records list
+                    const listContainer = document.getElementById('stream-records-list');
+                    const kListContainer = document.getElementById('kafka-stream-records-list');
+                    const records = data.recent_stream_records || [];
+
+                    const renderRecordsHtml = (recs) => {
+                        if(recs.length === 0) return `<div class="text-[#787574] text-[11px]">Awaiting live event payloads...</div>`;
+                        return recs.map(r => `
+                            <div class="flex items-center justify-between p-2.5 bg-[#f2f4f5] rounded-[14px] border border-[#ebebeb] text-[11px]">
+                                <div class="flex items-center space-x-2.5">
+                                    <span class="text-[#5433eb] font-bold font-mono">#${r.stream_seq}</span>
+                                    <span class="text-[#000000] font-bold">${r.customer_name || 'Shopper'}</span>
+                                    <span class="text-[#787574] font-mono text-[10px]">(${r.order_id || 'stream_ord'})</span>
+                                </div>
+                                <div class="flex items-center space-x-2.5">
+                                    <span class="text-[#000000] font-bold font-mono">₹${((r.amount_paise || 0) / 100).toLocaleString('en-IN')}</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${r.action === 'ALLOW' ? 'bg-emerald-100 text-emerald-800' : (r.action === 'CHALLENGE_DEPOSIT' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">${r.action}</span>
+                                </div>
+                            </div>
+                        `).join('');
+                    };
+
+                    if(listContainer) listContainer.innerHTML = renderRecordsHtml(records);
+                    if(kListContainer) kListContainer.innerHTML = renderRecordsHtml(records);
+                }
+            } catch(e) { console.debug('Stream poll error:', e); }
+        };
+
+        const simulateTestKeystroke = async () => {
+            const characters = ['Naruto Uzumaki', 'Kakashi Hatake', 'Levi Ackerman', 'Walter White', 'Mikasa Ackerman', 'Gojo Satoru'];
+            const chosen = characters[Math.floor(Math.random() * characters.length)];
+            const fields = ['cust-name', 'cust-street', 'cust-pincode', 'cust-payment-method'];
+            const field = fields[Math.floor(Math.random() * fields.length)];
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/stream/typing`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customer_name: chosen,
+                        customer_phone: '98' + Math.floor(10000000 + Math.random() * 90000000),
+                        raw_address: 'Flat 402, Hidden Leaf Way, Bellandur, Bengaluru 560103',
+                        pincode: '560103',
+                        payment_method: 'COD',
+                        device_canvas: 'macOS Canvas 0.95',
+                        field_modified: field,
+                        session_id: 'sim_session_' + Date.now().toString(36)
+                    })
+                });
+                if(res.ok) {
+                    showToast(`⚡ Ingested live Kafka keystroke for ${chosen} (${field})!`, 'success');
+                    await updateStreamMetrics();
+                }
+            } catch(e) {
+                console.error('Simulate keystroke error:', e);
+            }
+        };
+
+        const toggleSimulator = async () => {
+            const endpoint = simulatorRunning ? '/api/simulator/stop' : '/api/simulator/start';
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`, { method: 'POST' });
+                if(res.ok) {
+                    simulatorRunning = !simulatorRunning;
+                    const btn = document.getElementById('sim-btn');
+                    const txt = document.getElementById('sim-btn-text');
+                    if(simulatorRunning) {
+                        btn.classList.remove('bg-[#000000]', 'hover:bg-neutral-800');
+                        btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                        txt.textContent = 'Stop Auto-Traffic';
+                    } else {
+                        btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+                        btn.classList.add('bg-[#000000]', 'hover:bg-neutral-800');
+                        txt.textContent = 'Start Auto-Traffic';
+                    }
+                }
+            } catch(e) { console.error('Simulator toggle error:', e); }
+        };
+
+        const clearAllOrders = async () => {
+            if(!confirm("Are you sure you want to delete all order records and reset metrics?")) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/orders/all`, { method: 'DELETE' });
+                if(res.ok) {
+                    allOrdersCache = [];
+                    currentActiveOrder = null;
+                    renderFeedFromCache();
+                    const panel = document.getElementById('order-detail-content');
+                    if(panel) panel.innerHTML = `<div class="text-center py-20 text-[#787574] text-xs">All orders cleared from Supabase and memory.</div>`;
+                    const headerTotal = document.getElementById('header-total-orders');
+                    const railBadge = document.getElementById('rail-orders-badge');
+                    if(headerTotal) headerTotal.textContent = '0';
+                    if(railBadge) railBadge.textContent = '0';
+                    await updateStats();
+                    await updateTheBarMetrics();
+                    showToast('🗑️ All order records deleted from Supabase & memory!', 'info');
+                } else {
+                    showToast('⚠️ Failed to clear order records from server.', 'warning');
+                }
+            } catch(e) { 
+                console.error('Failed to clear orders:', e);
+                showToast('⚠️ Error connecting to server.', 'warning');
+            }
+        };
+
+        const openMerchantInvoiceModal = (orderId) => {
+            const order = allOrdersCache.find(o => o.order_id === orderId);
+            if(!order || !order.invoice) return;
+
+            const modal = document.getElementById('merchant-invoice-modal');
+            const printArea = document.getElementById('merchant-invoice-print-area');
+            const inv = order.invoice;
+            const amtInr = (order.amount_paise || 0) / 100;
+            const isDepositPaid = order.payment_status === 'DEPOSIT_PAID';
+            const isFullyPaidOnline = order.payment_status === 'PAID_ONLINE';
+            const totalAmt = inv.total_amount_inr || amtInr;
+            const balanceDue = isDepositPaid ? Math.max(0, totalAmt - 49) : (isFullyPaidOnline ? 0 : totalAmt);
+
+            const itemsRows = (inv.items || [{ name: 'Order Items', hsn_code: '85183000', quantity: 1, unit_price_inr: amtInr, total_inr: amtInr }]).map(it => `
+                <tr class="border-b border-[#ebebeb] text-xs">
+                    <td class="py-2.5 px-2 font-bold text-[#000000]">${it.name}</td>
+                    <td class="py-2.5 px-2 text-center text-[#787574] font-mono">${it.hsn_code || '85183000'}</td>
+                    <td class="py-2.5 px-2 text-center font-bold text-[#000000]">${it.quantity}</td>
+                    <td class="py-2.5 px-2 text-right font-mono text-[#000000]">${formatCurrency(it.unit_price_inr || it.total_inr)}</td>
+                    <td class="py-2.5 px-2 text-right font-mono font-bold text-[#000000]">${formatCurrency(it.total_inr)}</td>
+                </tr>
+            `).join('');
+
+            printArea.innerHTML = `
+                <div class="space-y-6 text-[#000000] bg-white p-2">
+                    <div class="flex justify-between items-start border-b-2 border-[#000000] pb-4">
+                        <div>
+                            <div class="text-2xl font-black text-[#000000] tracking-tighter">TAX INVOICE</div>
+                            <div class="text-xs text-[#787574] font-semibold mt-1">Invoice No: <span class="font-mono text-[#000000] font-black">${inv.invoice_number || 'INV-2026'}</span></div>
+                            <div class="text-xs text-[#787574]">Invoice Date: <span class="font-medium text-[#000000]">${inv.invoice_date || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+                            <div class="text-xs text-[#787574]">Order Ref: <span class="font-mono text-[#000000]">${order.order_id}</span></div>
+                        </div>
+                        <div class="text-right space-y-0.5">
+                            <div class="font-black text-sm text-[#000000]">ShopEasy India Technologies Pvt. Ltd.</div>
+                            <div class="text-xs text-[#787574] font-mono">GSTIN: <span class="font-bold text-[#000000]">${inv.gstin || '29AAECS1234F1Z5'}</span></div>
+                            <div class="text-xs text-[#787574] font-mono">CIN: U72900KA2024PTC123456 | PAN: AAECS1234F</div>
+                            <div class="text-xs text-[#787574]">${inv.warehouse_hub || 'Electronic City Fulfillment Center, Bengaluru'}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div class="p-3.5 bg-[#f2f4f5] border border-[#ebebeb] rounded-[20px] space-y-1">
+                            <div class="font-bold text-[#787574] uppercase text-[10px] tracking-wider">Billed &amp; Shipped To:</div>
+                            <div class="font-black text-[#000000] text-sm">${order.customer_name || 'Customer'}</div>
+                            <div class="text-[#787574] font-mono">📞 +91 ${order.customer_phone || '9876543210'}</div>
+                            <div class="text-[#787574]">${order.raw_address || order.area_name || 'Bengaluru'}</div>
+                            <div class="text-[#787574] font-mono">Pincode: <strong>${order.pincode || '560103'}</strong></div>
+                        </div>
+                        <div class="p-3.5 bg-[#f2f4f5] border border-[#ebebeb] rounded-[20px] space-y-1">
+                            <div class="font-bold text-[#787574] uppercase text-[10px] tracking-wider">Tax &amp; Payment Details:</div>
+                            <div>Place of Supply: <strong class="text-[#000000]">${inv.place_of_supply || 'Karnataka (29)'}</strong></div>
+                            <div>Payment Method: <strong class="text-[#000000] font-mono">${order.payment_method || 'COD'}</strong></div>
+                            <div>Payment Status: <strong class="${isFullyPaidOnline ? 'text-[#5433eb]' : (isDepositPaid ? 'text-emerald-700' : 'text-amber-700')}">${isFullyPaidOnline ? 'PAID ONLINE (UPI)' : (isDepositPaid ? '₹49 ADVANCE DEPOSIT PAID' : 'CASH ON DELIVERY VERIFIED')}</strong></div>
+                        </div>
+                    </div>
+
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-[#000000] text-[11px] font-black text-[#787574] uppercase tracking-wider bg-[#f2f4f5]">
+                                <th class="py-2.5 px-2">Item Description</th>
+                                <th class="py-2.5 px-2 text-center">HSN/SAC</th>
+                                <th class="py-2.5 px-2 text-center">Qty</th>
+                                <th class="py-2.5 px-2 text-right">Unit Rate</th>
+                                <th class="py-2.5 px-2 text-right">Amount (INR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsRows}
+                        </tbody>
+                    </table>
+
+                    <div class="grid grid-cols-12 gap-4 pt-2">
+                        <div class="col-span-6 space-y-2 text-xs text-[#787574]">
+                            <div class="p-3 bg-[#f2f4f5] border border-[#ebebeb] rounded-[20px] space-y-1">
+                                <div class="font-bold text-[#000000] text-[11px]">Declaration:</div>
+                                <div>This is a computer-generated tax invoice verified by Sentinel Risk Engine.</div>
+                                ${isDepositPaid ? '<div class="text-rose-700 font-semibold text-[10px] pt-1 border-t border-[#ebebeb]">* ₹49 advance verification deposit is non-refundable in case of doorstep refusal / RTO.</div>' : ''}
+                            </div>
+                        </div>
+
+                        <div class="col-span-6 flex justify-end">
+                            <div class="w-72 space-y-1.5 text-xs">
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>Taxable Subtotal:</span>
+                                    <span class="font-mono font-bold text-[#000000]">${formatCurrency(inv.taxable_amount_inr || (totalAmt / 1.18))}</span>
+                                </div>
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>CGST (9%):</span>
+                                    <span class="font-mono text-[#000000]">${formatCurrency(inv.cgst_amount_inr || ((totalAmt / 1.18) * 0.09))}</span>
+                                </div>
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>SGST (9%):</span>
+                                    <span class="font-mono text-[#000000]">${formatCurrency(inv.sgst_amount_inr || ((totalAmt / 1.18) * 0.09))}</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t-2 border-[#000000] font-black text-sm text-[#000000]">
+                                    <span>Total Invoice Value:</span>
+                                    <span class="font-mono text-base font-black text-[#000000]">${formatCurrency(totalAmt)}</span>
+                                </div>
+
+                                ${isDepositPaid ? `
+                                    <div class="flex justify-between text-emerald-700 pt-1 font-bold">
+                                        <span>Less: Advance Deposit (UPI):</span>
+                                        <span class="font-mono">-₹49.00</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-base text-[#5433eb]">
+                                        <span>Doorstep Balance Due:</span>
+                                        <span class="font-mono font-black">${formatCurrency(balanceDue)}</span>
+                                    </div>
+                                ` : (isFullyPaidOnline ? `
+                                    <div class="flex justify-between text-[#5433eb] pt-1 font-bold">
+                                        <span>Amount Paid via UPI:</span>
+                                        <span class="font-mono">${formatCurrency(totalAmt)}</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-sm text-emerald-700">
+                                        <span>Balance Due:</span>
+                                        <span class="font-mono font-black">₹0.00 (Fully Paid)</span>
+                                    </div>
+                                ` : `
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-base text-[#000000]">
+                                        <span>Payable at Doorstep:</span>
+                                        <span class="font-mono font-black text-[#5433eb]">${formatCurrency(totalAmt)}</span>
+                                    </div>
+                                `)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        };
+
+        const closeMerchantInvoiceModal = () => {
+            const modal = document.getElementById('merchant-invoice-modal');
+            if(modal) modal.classList.add('hidden');
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateStats();
+            updateOrders();
+            updateTheBarMetrics();
+            updateStreamMetrics();
+
+            setInterval(updateOrders, 1000);
+            setInterval(updateTheBarMetrics, 1000);
+            setInterval(updateStats, 2000);
+            setInterval(updateStreamMetrics, 250);
+        });
+    </script>
+</body>
+</html>

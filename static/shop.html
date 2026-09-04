@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shop. — Real-Time E-Commerce & Sentinel AI</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Sentinel Anti-Replay Client SDK -->
+    <script src="/static/sentinel-sdk.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        canvas: '#f2f4f5',
+                        surface: '#ffffff',
+                        ink: '#000000',
+                        'faint-border': '#ebebeb',
+                        'muted-gray': '#787574',
+                        'cool-stone': '#cccccc',
+                        'warm-fog': '#acb0aa',
+                        violet: {
+                            shop: '#5433eb',
+                            wash: '#c0b5f3',
+                            hover: '#4524db',
+                        },
+                        slate: {
+                            ink: '#332f2d',
+                        }
+                    },
+                    borderRadius: {
+                        'card': '28px',
+                        'inner-img': '20px',
+                        'pill': '9999px',
+                    },
+                    boxShadow: {
+                        'shop-sm': 'rgba(0, 0, 0, 0.06) 0px 2px 8px 0px',
+                        'shop-card': 'rgba(0, 0, 0, 0.08) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -2px',
+                        'shop-lg': 'rgba(0, 0, 0, 0.12) 0px 4px 24px 0px',
+                        'shop-violet': 'rgba(84, 51, 235, 0.34) 0px 4px 24px 0px',
+                    },
+                    letterSpacing: {
+                        'tighter-heading': '-0.05em',
+                        'tight-body': '-0.031em',
+                        'tight-meta': '-0.017em',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --color-canvas-mist: #f2f4f5;
+            --color-pure-white: #ffffff;
+            --color-ink-black: #000000;
+            --color-faint-border: #ebebeb;
+            --color-muted-gray: #787574;
+            --color-shop-violet: #5433eb;
+            --color-violet-wash: #c0b5f3;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--color-canvas-mist);
+            color: var(--color-ink-black);
+            letter-spacing: -0.031em;
+            -webkit-font-smoothing: antialiased;
+        }
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d6d9dc; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #b0b4b8; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 8mm 10mm; }
+            html, body { background: #FFFFFF !important; color: #000000 !important; margin: 0 !important; padding: 0 !important; }
+            body > *:not(#invoice-modal) { display: none !important; }
+            #invoice-modal { display: block !important; position: static !important; inset: auto !important; width: 100% !important; height: auto !important; max-height: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
+            #invoice-modal > div:first-child { display: none !important; }
+            #invoice-modal > div:last-child { position: static !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
+            #invoice-print-area { display: block !important; width: 100% !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm bg-[#f2f4f5] selection:bg-[#c0b5f3] selection:text-[#5433eb]">
+
+    <!-- Persistent 64px Sidebar Nav Rail -->
+    <aside aria-label="Main Navigation" class="w-16 bg-white shrink-0 flex flex-col items-center justify-between py-6 my-4 ml-4 rounded-[28px] border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] z-30 h-[calc(100vh-2rem)] no-print">
+        <div class="flex flex-col items-center space-y-6">
+            <!-- Shop Logo Mark -->
+            <button onclick="showProductsView()" title="shop. Home" class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black text-black hover:opacity-80 transition-opacity">
+                <span class="text-[#000000] font-black text-xl tracking-tighter">s<span class="text-[#5433eb]">.</span></span>
+            </button>
+
+            <!-- Navigation Icons -->
+            <div class="flex flex-col items-center space-y-3" id="shop-nav-rail">
+                <button id="nav-shop-catalog" onclick="showProductsView()" title="Explore Discoveries" class="shop-nav-btn active w-11 h-11 rounded-[20px] bg-[#000000] text-white flex items-center justify-center transition-all hover:scale-105 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </button>
+
+                <button id="nav-shop-cart" onclick="toggleCartDrawer()" title="Shopping Bag Drawer" class="shop-nav-btn relative w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    <span id="rail-cart-badge" class="absolute -top-1 -right-1 bg-[#5433eb] text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full min-w-[16px] text-center hidden">0</span>
+                </button>
+
+                <button id="nav-shop-checkout" onclick="showCheckoutView()" title="Instant Checkout" class="shop-nav-btn w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                </button>
+
+                <a href="/" target="_blank" title="Sentinel AI Merchant Console" class="w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#5433eb] flex items-center justify-center transition-all">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <!-- Profile Circle Avatar -->
+        <div class="flex flex-col items-center space-y-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Sentinel Gateway Active"></span>
+            <div class="w-8 h-8 rounded-full border border-[#ebebeb] bg-[#f2f4f5] flex items-center justify-center text-xs font-bold text-[#787574] shadow-sm">
+                🛍️
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col relative h-full overflow-y-auto px-4 md:px-8 py-4 no-print">
+        <div class="w-full max-w-7xl mx-auto space-y-8 pb-12">
+
+            <!-- App Banner & Top Header Bar -->
+            <header class="space-y-4">
+                <!-- App Download Banner Pill -->
+                <div class="w-full bg-[#000000] text-white rounded-[20px] px-5 py-2.5 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-6 h-6 rounded-lg bg-[#5433eb] flex items-center justify-center font-bold text-white text-xs shadow-sm">
+                            🛍️
+                        </div>
+                        <div class="flex items-center space-x-1.5 text-xs">
+                            <span class="font-normal text-white">Download the</span>
+                            <strong class="font-bold text-white">Shop app</strong>
+                            <span class="text-[#acb0aa] hidden sm:inline">• Direct orders with live Sentinel AI RTO protection</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <a href="/" target="_blank" class="text-xs text-[#acb0aa] hover:text-white transition-colors flex items-center space-x-1 font-semibold">
+                            <span>Open Merchant Console</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Top Navbar with direct category switcher & Cart Trigger -->
+                <div class="flex items-center justify-between pt-1">
+                    <div class="flex items-center space-x-3 cursor-pointer" onclick="showProductsView()">
+                        <span class="text-2xl font-black tracking-tighter text-[#000000]">shop<span class="text-[#5433eb]">.</span></span>
+                        <span class="text-xs uppercase font-bold text-[#787574] tracking-wider px-2.5 py-0.5 rounded-full border border-[#ebebeb] bg-white shadow-sm">Direct E-Commerce</span>
+                    </div>
+
+                    <!-- Direct Top Navigation Pills -->
+                    <div class="hidden sm:flex items-center bg-white p-1 rounded-full border border-[#ebebeb] shadow-sm space-x-1">
+                        <button onclick="showProductsView()" id="top-btn-catalog" class="px-3.5 py-1 rounded-full text-xs font-bold bg-[#000000] text-white transition-all">
+                            ✨ Discoveries
+                        </button>
+                        <button onclick="showCheckoutView()" id="top-btn-checkout" class="px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all">
+                            ⚡ Instant Checkout
+                        </button>
+                    </div>
+
+                    <div class="flex items-center space-x-3">
+                        <button onclick="toggleCartDrawer()" class="h-11 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] flex items-center space-x-2.5 hover:border-[#5433eb] transition-all">
+                            <svg class="w-4 h-4 text-[#000000]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                            </svg>
+                            <span class="text-xs font-bold text-[#000000]" id="cart-btn-total">₹0</span>
+                            <span id="header-cart-badge" class="bg-[#5433eb] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full min-w-[18px] text-center">0</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CATALOG VIEW -->
+            <div id="products-view" class="fade-in space-y-10">
+
+                <!-- Hero Section: Constellation & Search -->
+                <section class="space-y-6 pt-4 text-center">
+                    <div class="space-y-2">
+                        <h1 class="text-4xl md:text-5xl font-black text-[#000000] tracking-tighter">
+                            shop<span class="text-[#5433eb]">.</span> official
+                        </h1>
+                        <p class="text-base text-[#787574] font-normal tracking-[-0.031em] max-w-lg mx-auto">
+                            Curated direct-to-consumer store with real-time Sentinel AI delivery protection
+                        </p>
+                    </div>
+
+                    <!-- Search Input with Violet Submit -->
+                    <div class="max-w-2xl mx-auto relative">
+                        <div class="w-full bg-white rounded-full border border-[rgba(0,0,0,0.1)] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] p-1.5 pl-6 flex items-center justify-between">
+                            <input type="text" id="hero-search-input" placeholder="What are you shopping for today?" class="w-full bg-transparent text-sm text-[#000000] placeholder-[#787574] focus:outline-none tracking-[-0.031em]">
+                            <button onclick="filterCatalogBySearch()" title="Search catalog" class="w-11 h-11 rounded-full bg-[#5433eb] text-white flex items-center justify-center shrink-0 shadow-[rgba(84,51,235,0.34)_0px_4px_24px_0px] hover:bg-[#4524db] transition-all hover:scale-105">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Category Pills Row -->
+                    <div class="flex items-center justify-center flex-wrap gap-2.5 pt-2" id="category-pills-row">
+                        <button onclick="filterCategory('All')" data-category="All" class="category-pill active h-9 px-4 rounded-full bg-[#000000] text-white border border-[#000000] text-xs font-bold transition-all shadow-sm">
+                            ✨ All Products
+                        </button>
+                        <button onclick="filterCategory('Audio & Electronics')" data-category="Audio & Electronics" class="category-pill h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all">
+                            ⚡ Electronics &amp; Audio
+                        </button>
+                        <button onclick="filterCategory('Ethnic Fashion')" data-category="Ethnic Fashion" class="category-pill h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all">
+                            👗 Fashion &amp; Apparel
+                        </button>
+                        <button onclick="filterCategory('Home & Living')" data-category="Home & Living" class="category-pill h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all">
+                            🏠 Home &amp; Kitchen
+                        </button>
+                        <button onclick="filterCategory('Beauty & Wellness')" data-category="Beauty & Wellness" class="category-pill h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all">
+                            💄 Beauty &amp; Glow
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Featured Products Grid -->
+                <section class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-xl font-bold text-[#000000] tracking-[-0.05em]" id="section-title">Trending Discoveries</h2>
+                            <p class="text-xs text-[#787574] mt-0.5">Direct fulfillment with zero transit loss protection</p>
+                        </div>
+                        <span class="text-xs text-[#787574] font-medium" id="product-count-label">10 Items Available</span>
+                    </div>
+
+                    <!-- 4-Column Product Cards (28px radius, 20px inner image) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="product-grid">
+                        <!-- 1. Earbuds Pro -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-violet-500 to-indigo-600 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&q=80" alt="Wireless Earbuds Pro" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">🎧</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Acoustic Sound</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Audio</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Acoustic Sound</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Wireless Earbuds Pro (Active Noise Cancelling)</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.9 ★ (1,842)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹1,499</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_001')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_001')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Kurti Set -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-pink-500 to-rose-600 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&q=80" alt="Cotton Kurti Set" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">👗</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Fabrics of India</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Ethnic</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Fabrics of India</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Pure Cotton Designer Kurti Set (Pack of 3)</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.8 ★ (934)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹899</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_002')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_002')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Smart Band -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-blue-500 to-cyan-600 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?w=500&q=80" alt="Smart Fitness Band" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">⌚</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Pulse Track</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Audio</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Pulse Track</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Smart Fitness Band Series 7 (AMOLED Display)</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.7 ★ (2,105)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹2,499</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_003')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_003')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Mixer Grinder -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-amber-500 to-orange-600 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=500&q=80" alt="Kitchen Mixer Grinder" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">🍹</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">ChefMaster Home</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Home</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">ChefMaster Home</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Heavy Duty Kitchen Mixer Grinder 750W</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.9 ★ (640)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹3,299</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_004')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_004')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Studio Headphones -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-800 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80" alt="Studio Headphones" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">🎧</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Studio Pro One</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Audio</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Studio Pro One</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Over-Ear Wireless Studio Headphones 40mm</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">5.0 ★ (412)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹4,999</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_005')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_005')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. Cookware Set -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=500&q=80" alt="Cookware Set" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">🍳</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">KitchenCraft</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Home</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">KitchenCraft</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Granite Non-Stick Induction Cookware Set</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.8 ★ (820)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹2,199</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_006')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_006')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 7. Wallet & Belt -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-yellow-600 to-amber-800 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80" alt="Leather Wallet & Belt" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">💼</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Heritage Hide</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Ethnic</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Heritage Hide</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Full Grain Leather Wallet & Belt Gift Set</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.9 ★ (1,150)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹1,249</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_007')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_007')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 8. Face Serum -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-rose-400 to-pink-600 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=80" alt="Face Glow Serum" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">✨</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Veda Glow</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Beauty</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Veda Glow</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Kumkumadi Ayurvedic Face Glow Serum 30ml</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.8 ★ (3,410)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹699</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_008')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_008')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 9. GaN Charger -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-cyan-500 to-blue-700 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500&q=80" alt="65W GaN Fast Charger" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">⚡</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">VoltCharge Pro</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Audio</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">VoltCharge Pro</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Compact 65W GaN Fast Charger (Type-C + USB)</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.9 ★ (880)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹1,799</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_009')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_009')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 10. Memory Foam Pillow -->
+                        <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                            <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br from-sky-400 to-indigo-500 relative flex items-center justify-center shadow-inner">
+                                <img src="https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=500&q=80" alt="Orthopedic Pillow" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.display='none';">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                                    <span class="text-5xl mb-2 drop-shadow-md">🛏️</span>
+                                    <span class="text-xs font-black tracking-tight text-white drop-shadow">Cloud Rest</span>
+                                </div>
+                                <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">Home</span>
+                            </div>
+                            <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">Cloud Rest</div>
+                                    <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">Ergonomic Memory Foam Orthopedic Pillow</h3>
+                                    <div class="text-[11px] text-[#787574] font-medium pt-0.5">4.7 ★ (560)</div>
+                                </div>
+                                <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                                    <span class="font-black text-base text-[#000000] font-mono">₹1,399</span>
+                                    <div class="flex items-center space-x-1.5">
+                                        <button onclick="addToCart('prod_010')" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">+ Bag</button>
+                                        <button onclick="buyNow('prod_010')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">Buy Now</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- CHECKOUT VIEW -->
+            <div id="checkout-view" class="hidden fade-in space-y-8 max-w-4xl mx-auto">
+                <div class="flex items-center justify-between">
+                    <button onclick="showProductsView()" class="h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all flex items-center space-x-1.5">
+                        <span>← Back to Shop</span>
+                    </button>
+                    <div class="flex items-center space-x-2 text-xs text-[#787574]">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span class="font-medium">Sentinel ML Risk Engine Active (&lt;2ms)</span>
+                    </div>
+                </div>
+
+                <!-- Test Account Switcher -->
+                <div class="bg-white rounded-[28px] p-6 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <span class="text-xs font-bold text-[#000000] uppercase tracking-wider">Simulate Shopper Persona:</span>
+                            <p class="text-[11px] text-[#787574]">Randomizes anime/show character personas with realistic telemetry</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" onclick="switchTestAccount(currentActiveAccountType)" class="h-8 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-medium transition-all flex items-center space-x-1">
+                                <span>🔄 Randomize Show Character</span>
+                            </button>
+                            <span id="active-account-badge" class="h-8 px-3 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center">Safe Profile</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <button type="button" onclick="switchTestAccount('safe')" id="btn-acc-safe" class="h-11 rounded-full bg-emerald-50 border-2 border-emerald-500 text-emerald-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-sm">
+                            <span>🟢 Safe Profile (Score 12)</span>
+                        </button>
+                        <button type="button" onclick="switchTestAccount('moderate')" id="btn-acc-moderate" class="h-11 rounded-full bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-medium flex items-center justify-center space-x-1.5 transition-all hover:border-amber-400">
+                            <span>🟡 Moderate Tier (₹49 Step-up)</span>
+                        </button>
+                        <button type="button" onclick="switchTestAccount('red')" id="btn-acc-red" class="h-11 rounded-full bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-medium flex items-center justify-center space-x-1.5 transition-all hover:border-rose-400">
+                            <span>🔴 Red Bot Attack (Score 96)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Checkout Form (7 cols) -->
+                    <div class="lg:col-span-7 bg-white rounded-[28px] p-6 md:p-8 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] space-y-6">
+                        <div class="border-b border-[#ebebeb] pb-3">
+                            <h3 class="text-base font-bold text-[#000000] tracking-[-0.05em]">Delivery &amp; Customer Information</h3>
+                            <p class="text-xs text-[#787574] mt-0.5">Keystrokes are streamed in real-time to Sentinel Kafka engine</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">Recipient Full Name</label>
+                                    <input type="text" id="cust-name" value="Priya Sharma" placeholder="e.g. Naruto Uzumaki" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs font-medium text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">10-Digit Mobile Phone</label>
+                                    <input type="tel" id="cust-phone" value="9876543210" placeholder="e.g. 9876543210" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs font-mono font-medium text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-[#787574] mb-1.5">Door / Flat No &amp; Building</label>
+                                <input type="text" id="cust-unit" value="Flat 402, Green Glen Layout" placeholder="e.g. Hokage Residence, 7th Floor" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">Street &amp; Area Landmark</label>
+                                    <input type="text" id="cust-street" value="Bellandur Outer Ring Road" placeholder="e.g. Hidden Leaf Way" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">City</label>
+                                    <input type="text" id="cust-city" value="Bengaluru" placeholder="e.g. Bengaluru" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">Pincode (6-Digits)</label>
+                                    <input type="text" id="cust-pincode" value="560103" placeholder="e.g. 560103" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs font-mono font-bold text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-[#787574] mb-1.5">Payment Method</label>
+                                    <select id="cust-payment-method" class="w-full h-11 px-4 bg-[#f2f4f5] border border-[#ebebeb] rounded-full text-xs font-medium text-[#000000] focus:bg-white focus:border-[#5433eb] focus:outline-none transition-all">
+                                        <option value="COD">📦 Cash on Delivery (Doorstep COD)</option>
+                                        <option value="UPI">⚡ Instant UPI Intent (GPay / PhonePe)</option>
+                                        <option value="PREPAID">💳 Credit / Debit Card (100% Prepaid)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hardware Simulation Status -->
+                        <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between text-[11px] text-[#787574]">
+                            <span>Device: <span id="device-preview" class="font-mono text-[#000000]">macOS Canvas 0.95</span></span>
+                            <span>Fulfillment Hub: <span class="font-mono text-[#000000] font-bold">560100 (ECity)</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary (5 cols) -->
+                    <div class="lg:col-span-5 bg-white rounded-[28px] p-6 md:p-8 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] flex flex-col justify-between space-y-6">
+                        <div>
+                            <h3 class="text-base font-bold text-[#000000] tracking-[-0.05em] pb-3 border-b border-[#ebebeb]">Order Summary</h3>
+
+                            <div class="mt-4 space-y-3 max-h-48 overflow-y-auto" id="checkout-cart-items">
+                                <!-- Populated dynamically -->
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-[#ebebeb] space-y-2 text-xs text-[#787574]">
+                                <div class="flex justify-between">
+                                    <span>Taxable Subtotal:</span>
+                                    <span class="font-mono font-medium text-[#000000]" id="checkout-subtotal">₹0</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>GST (18% Included):</span>
+                                    <span class="font-mono text-[#787574]" id="checkout-gst">₹0</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Express Courier Shipping:</span>
+                                    <span class="text-emerald-700 font-bold">FREE</span>
+                                </div>
+                                <div class="flex justify-between pt-3 border-t border-[#ebebeb] text-sm font-bold text-[#000000]">
+                                    <span>Total Value:</span>
+                                    <span class="font-mono text-lg font-black text-[#5433eb]" id="checkout-total">₹0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-4 border-t border-[#ebebeb]">
+                            <button id="btn-place-order" onclick="submitRealtimeOrder()" class="w-full h-12 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white font-bold text-xs transition-all shadow-[rgba(84,51,235,0.34)_0px_4px_24px_0px] flex items-center justify-center space-x-2">
+                                <span id="btn-order-text">Place Real-Time Order ⚡</span>
+                            </button>
+                            <p class="text-[10px] text-center text-[#787574]">
+                                Evaluated in &lt;2ms by Sentinel AI • Anti-fraud protected
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Sliding Shopping Cart Drawer -->
+    <div id="cart-drawer" class="fixed inset-0 z-50 overflow-hidden hidden no-print">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="toggleCartDrawer()"></div>
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white shadow-2xl flex flex-col rounded-l-[28px] overflow-hidden border-l border-[#ebebeb]">
+                <div class="p-6 border-b border-[#ebebeb] flex justify-between items-center">
+                    <div>
+                        <h3 class="text-base font-bold text-[#000000] tracking-[-0.05em]">Your Shopping Bag</h3>
+                        <p class="text-xs text-[#787574]">Items reserved for instant checkout</p>
+                    </div>
+                    <button onclick="toggleCartDrawer()" class="w-8 h-8 rounded-full bg-[#f2f4f5] text-[#000000] font-bold text-sm flex items-center justify-center hover:bg-[#ebebeb]">&times;</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6 space-y-4" id="drawer-cart-items">
+                    <div class="text-center py-20 text-[#787574] text-xs">Your bag is currently empty.</div>
+                </div>
+
+                <div class="p-6 border-t border-[#ebebeb] space-y-4">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-[#787574]">Total (GST Included):</span>
+                        <span class="font-mono text-lg font-black text-[#000000]" id="drawer-total">₹0</span>
+                    </div>
+                    <button onclick="proceedToCheckoutFromCart()" class="w-full h-12 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white font-bold text-xs transition-all shadow-[rgba(84,51,235,0.34)_0px_4px_24px_0px]">
+                        Proceed to Instant Checkout ➔
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Decision & Action Modal -->
+    <div id="decision-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden no-print">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeDecisionModal()"></div>
+        <div class="relative bg-white rounded-[28px] max-w-md w-full p-8 shadow-2xl space-y-6 m-4 border border-[#ebebeb]" id="decision-card">
+            <!-- Populated dynamically -->
+        </div>
+    </div>
+
+    <!-- Digital Tax Invoice Modal (Printable) -->
+    <div id="invoice-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm no-print" onclick="closeInvoiceModal()"></div>
+        <div class="relative bg-white rounded-[28px] max-w-2xl w-full p-8 shadow-2xl space-y-6 m-4 max-h-[90vh] overflow-y-auto border border-[#ebebeb]">
+            <div class="flex justify-between items-center no-print pb-3 border-b border-[#ebebeb]">
+                <span class="text-xs font-bold text-[#000000] uppercase tracking-wider">Official GST Tax Invoice</span>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="h-8 px-4 rounded-full bg-[#000000] hover:bg-neutral-800 text-white text-xs font-bold transition-all flex items-center space-x-1.5 shadow-sm">
+                        <span>🖨️ Print Invoice</span>
+                    </button>
+                    <button onclick="closeInvoiceModal()" class="w-8 h-8 rounded-full bg-[#f2f4f5] text-[#000000] font-bold text-sm flex items-center justify-center hover:bg-[#ebebeb]">&times;</button>
+                </div>
+            </div>
+
+            <div id="invoice-print-area">
+                <!-- Populated dynamically from order invoice -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="shop-toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Application Logic -->
+    <script>
+        const API_BASE = window.location.origin;
+
+        let PRODUCTS = [
+            { id: 'prod_001', name: 'Wireless Earbuds Pro (Active Noise Cancelling)', brand: 'Acoustic Sound', price_inr: 1499, category: 'Audio & Electronics', rating: '4.9 ★ (1,842)', hsn: '85183000', icon: '🎧', img: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&q=80', gradient: 'from-violet-500 to-indigo-600' },
+            { id: 'prod_002', name: 'Pure Cotton Designer Kurti Set (Pack of 3)', brand: 'Fabrics of India', price_inr: 899, category: 'Ethnic Fashion', rating: '4.8 ★ (934)', hsn: '62041200', icon: '👗', img: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&q=80', gradient: 'from-pink-500 to-rose-600' },
+            { id: 'prod_003', name: 'Smart Fitness Band Series 7 (AMOLED Display)', brand: 'Pulse Track', price_inr: 2499, category: 'Audio & Electronics', rating: '4.7 ★ (2,105)', hsn: '85176290', icon: '⌚', img: 'https://images.unsplash.com/photo-1575311373937-040b8e1fd5b6?w=500&q=80', gradient: 'from-blue-500 to-cyan-600' },
+            { id: 'prod_004', name: 'Heavy Duty Kitchen Mixer Grinder 750W', brand: 'ChefMaster Home', price_inr: 3299, category: 'Home & Living', rating: '4.9 ★ (640)', hsn: '85094010', icon: '🍹', img: 'https://images.unsplash.com/photo-1570222094114-d054a817e56b?w=500&q=80', gradient: 'from-amber-500 to-orange-600' },
+            { id: 'prod_005', name: 'Over-Ear Wireless Studio Headphones 40mm', brand: 'Studio Pro One', price_inr: 4999, category: 'Audio & Electronics', rating: '5.0 ★ (412)', hsn: '85183000', icon: '🎧', img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80', gradient: 'from-purple-600 to-indigo-800' },
+            { id: 'prod_006', name: 'Granite Non-Stick Induction Cookware Set', brand: 'KitchenCraft', price_inr: 2199, category: 'Home & Living', rating: '4.8 ★ (820)', hsn: '76151011', icon: '🍳', img: 'https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?w=500&q=80', gradient: 'from-emerald-500 to-teal-700' },
+            { id: 'prod_007', name: 'Full Grain Leather Wallet & Belt Gift Set', brand: 'Heritage Hide', price_inr: 1249, category: 'Ethnic Fashion', rating: '4.9 ★ (1,150)', hsn: '42023190', icon: '💼', img: 'https://images.unsplash.com/photo-1627123424574-724758594e93?w=500&q=80', gradient: 'from-yellow-600 to-amber-800' },
+            { id: 'prod_008', name: 'Kumkumadi Ayurvedic Face Glow Serum 30ml', brand: 'Veda Glow', price_inr: 699, category: 'Beauty & Wellness', rating: '4.8 ★ (3,410)', hsn: '33049910', icon: '✨', img: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=80', gradient: 'from-rose-400 to-pink-600' },
+            { id: 'prod_009', name: 'Compact 65W GaN Fast Charger (Type-C + USB)', brand: 'VoltCharge Pro', price_inr: 1799, category: 'Audio & Electronics', rating: '4.9 ★ (880)', hsn: '85044030', icon: '⚡', img: 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500&q=80', gradient: 'from-cyan-500 to-blue-700' },
+            { id: 'prod_010', name: 'Ergonomic Memory Foam Orthopedic Pillow', brand: 'Cloud Rest', price_inr: 1399, category: 'Home & Living', rating: '4.7 ★ (560)', hsn: '94049000', icon: '🛏️', img: 'https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=500&q=80', gradient: 'from-sky-400 to-indigo-500' },
+        ];
+
+        let cart = {};
+        let activeCategoryFilter = 'All';
+        let lastPlacedOrder = null;
+        let lastCreatedInvoice = null;
+
+        const formatCurrency = (val) => '₹' + Math.round(val).toLocaleString('en-IN');
+
+        const renderProducts = () => {
+            const grid = document.getElementById('product-grid');
+            if(!grid) return;
+
+            let filtered = PRODUCTS;
+            if(activeCategoryFilter !== 'All') {
+                filtered = PRODUCTS.filter(p => p.category === activeCategoryFilter);
+            }
+
+            const searchVal = document.getElementById('hero-search-input')?.value.toLowerCase().trim();
+            if(searchVal) {
+                filtered = filtered.filter(p => p.name.toLowerCase().includes(searchVal) || p.brand.toLowerCase().includes(searchVal));
+            }
+
+            const countLabel = document.getElementById('product-count-label');
+            if(countLabel) countLabel.textContent = `${filtered.length} Items Available`;
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-16 text-center space-y-3 bg-white rounded-[28px] border border-[#ebebeb] p-8 shadow-sm">
+                        <div class="text-3xl">🔍</div>
+                        <h3 class="text-sm font-bold text-[#000000]">No products found matching your search</h3>
+                        <p class="text-xs text-[#787574]">Try searching for "Earbuds", "Fashion", "Kitchen", or click "All Products".</p>
+                        <button onclick="filterCategory('All')" class="h-9 px-4 rounded-full bg-[#000000] text-white text-xs font-bold hover:bg-neutral-800 transition-all">
+                            View All Products
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(p => `
+                <div class="bg-white rounded-[28px] p-3 border border-[#ebebeb] shadow-[rgba(0,0,0,0.08)_0px_4px_6px_-1px,rgba(0,0,0,0.06)_0px_2px_4px_-2px] hover:shadow-[rgba(0,0,0,0.12)_0px_4px_24px_0px] transition-all flex flex-col justify-between group">
+                    <div class="w-full aspect-square rounded-[20px] overflow-hidden bg-gradient-to-br ${p.gradient || 'from-indigo-50 to-slate-100'} relative flex items-center justify-center shadow-inner">
+                        <img src="${p.img}" alt="${p.name}" loading="lazy" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500 relative z-10" onerror="this.style.opacity='0';">
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center z-0">
+                            <span class="text-5xl mb-2 drop-shadow-md">${p.icon || '🛍️'}</span>
+                            <span class="text-xs font-black tracking-tight text-white drop-shadow">${p.brand}</span>
+                        </div>
+                        <span class="absolute top-2.5 right-2.5 z-20 bg-white/95 backdrop-blur-sm text-[10px] font-bold text-[#000000] px-2.5 py-1 rounded-full shadow-sm">${p.category.split(' ')[0]}</span>
+                    </div>
+
+                    <div class="p-3 pt-4 space-y-2 flex-1 flex flex-col justify-between">
+                        <div class="space-y-1">
+                            <div class="text-[11px] font-semibold text-[#787574] uppercase tracking-wider">${p.brand}</div>
+                            <h3 class="font-semibold text-sm text-[#000000] leading-snug line-clamp-2 tracking-[-0.031em]">${p.name}</h3>
+                            <div class="text-[11px] text-[#787574] font-medium pt-0.5">${p.rating}</div>
+                        </div>
+
+                        <div class="pt-3 border-t border-[#ebebeb] flex items-center justify-between">
+                            <span class="font-black text-base text-[#000000] font-mono">${formatCurrency(p.price_inr)}</span>
+                            <div class="flex items-center space-x-1.5">
+                                <button onclick="addToCart('${p.id}', event)" title="Add to bag" class="h-9 px-3 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] text-xs font-semibold transition-all">
+                                    + Bag
+                                </button>
+                                <button onclick="buyNow('${p.id}')" title="Buy now" class="h-9 px-3.5 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white text-xs font-bold transition-all shadow-[rgba(84,51,235,0.25)_0px_2px_12px_0px]">
+                                    Buy Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const filterCategory = (cat) => {
+            activeCategoryFilter = cat;
+            document.querySelectorAll('.category-pill').forEach(btn => {
+                if(btn.getAttribute('data-category') === cat) {
+                    btn.className = 'category-pill active h-9 px-4 rounded-full bg-[#000000] text-white border border-[#000000] text-xs font-bold transition-all shadow-sm';
+                } else {
+                    btn.className = 'category-pill h-9 px-4 rounded-full bg-white border border-[#ebebeb] shadow-[rgba(0,0,0,0.06)_0px_2px_8px_0px] text-xs font-medium text-[#000000] hover:border-[#5433eb] transition-all';
+                }
+            });
+            const titleEl = document.getElementById('section-title');
+            if(titleEl) titleEl.textContent = cat === 'All' ? 'Trending Discoveries' : cat;
+            renderProducts();
+        };
+
+        const filterCatalogBySearch = () => {
+            renderProducts();
+        };
+
+        document.getElementById('hero-search-input')?.addEventListener('input', () => {
+            renderProducts();
+        });
+
+        const setShopNavActive = (view) => {
+            const catalogBtn = document.getElementById('nav-shop-catalog');
+            const checkoutBtn = document.getElementById('nav-shop-checkout');
+            if(catalogBtn) {
+                if(view === 'catalog') {
+                    catalogBtn.className = 'shop-nav-btn active w-11 h-11 rounded-[20px] bg-[#000000] text-white flex items-center justify-center transition-all hover:scale-105 shadow-sm';
+                } else {
+                    catalogBtn.className = 'shop-nav-btn w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all';
+                }
+            }
+            if(checkoutBtn) {
+                if(view === 'checkout') {
+                    checkoutBtn.className = 'shop-nav-btn active w-11 h-11 rounded-[20px] bg-[#000000] text-white flex items-center justify-center transition-all hover:scale-105 shadow-sm';
+                } else {
+                    checkoutBtn.className = 'shop-nav-btn w-11 h-11 rounded-[20px] text-[#787574] hover:bg-[#f2f4f5] hover:text-[#000000] flex items-center justify-center transition-all';
+                }
+            }
+        };
+
+        const updateCartBadges = () => {
+            let totalQty = 0;
+            let totalAmt = 0;
+            Object.values(cart).forEach(it => {
+                totalQty += it.quantity;
+                totalAmt += it.product.price_inr * it.quantity;
+            });
+
+            const headerBadge = document.getElementById('header-cart-badge');
+            const railBadge = document.getElementById('rail-cart-badge');
+            if(headerBadge) headerBadge.textContent = totalQty;
+            if(railBadge) {
+                railBadge.textContent = totalQty;
+                if(totalQty > 0) railBadge.classList.remove('hidden');
+                else railBadge.classList.add('hidden');
+            }
+            document.getElementById('cart-btn-total').textContent = formatCurrency(totalAmt);
+            document.getElementById('drawer-total').textContent = formatCurrency(totalAmt);
+
+            const drawerContainer = document.getElementById('drawer-cart-items');
+            if(totalQty === 0) {
+                drawerContainer.innerHTML = `<div class="text-center py-20 text-[#787574] text-xs">Your bag is currently empty.</div>`;
+            } else {
+                drawerContainer.innerHTML = Object.values(cart).map(it => `
+                    <div class="flex items-center justify-between p-3.5 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb]">
+                        <div class="space-y-0.5">
+                            <h4 class="font-bold text-xs text-[#000000] leading-tight">${it.product.name}</h4>
+                            <span class="text-xs font-mono text-[#5433eb] font-bold">${formatCurrency(it.product.price_inr)}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0 ml-3">
+                            <button onclick="changeQty('${it.product.id}', -1)" class="w-7 h-7 rounded-full bg-white border border-[#ebebeb] font-bold text-xs flex items-center justify-center hover:bg-slate-100">-</button>
+                            <span class="font-mono text-xs font-bold text-[#000000]">${it.quantity}</span>
+                            <button onclick="changeQty('${it.product.id}', 1)" class="w-7 h-7 rounded-full bg-white border border-[#ebebeb] font-bold text-xs flex items-center justify-center hover:bg-slate-100">+</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        const showShopToast = (msg, icon = '🛍️') => {
+            const container = document.getElementById('shop-toast-container');
+            if(!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'pointer-events-auto flex items-center space-x-2 bg-[#000000] text-white text-xs font-bold px-4 py-3 rounded-full shadow-2xl border border-neutral-700 fade-in';
+            toast.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        };
+
+        const addToCart = (productId, event = null) => {
+            const p = PRODUCTS.find(x => x.id === productId);
+            if(!p) return;
+            if(cart[productId]) cart[productId].quantity++;
+            else cart[productId] = { product: p, quantity: 1 };
+            updateCartBadges();
+            showShopToast(`Added ${p.name.split('(')[0].trim()} to bag!`, '✓');
+
+            if(event && event.currentTarget) {
+                const btn = event.currentTarget;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Added';
+                btn.classList.add('bg-emerald-100', 'text-emerald-800');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('bg-emerald-100', 'text-emerald-800');
+                }, 1000);
+            }
+        };
+
+        const buyNow = (productId) => {
+            addToCart(productId);
+            showCheckoutView();
+        };
+
+        const changeQty = (productId, delta) => {
+            if(!cart[productId]) return;
+            cart[productId].quantity += delta;
+            if(cart[productId].quantity <= 0) delete cart[productId];
+            updateCartBadges();
+            renderCheckoutSummary();
+        };
+
+        const toggleCartDrawer = () => {
+            const drawer = document.getElementById('cart-drawer');
+            drawer.classList.toggle('hidden');
+        };
+
+        const proceedToCheckoutFromCart = () => {
+            toggleCartDrawer();
+            showCheckoutView();
+        };
+
+        const showProductsView = () => {
+            document.getElementById('products-view').classList.remove('hidden');
+            document.getElementById('checkout-view').classList.add('hidden');
+            setShopNavActive('catalog');
+            const topCatalog = document.getElementById('top-btn-catalog');
+            const topCheckout = document.getElementById('top-btn-checkout');
+            if(topCatalog) {
+                topCatalog.className = 'px-3.5 py-1 rounded-full text-xs font-bold bg-[#000000] text-white transition-all shadow-sm';
+            }
+            if(topCheckout) {
+                topCheckout.className = 'px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all';
+            }
+            renderProducts();
+        };
+
+        const showCheckoutView = () => {
+            document.getElementById('products-view').classList.add('hidden');
+            document.getElementById('checkout-view').classList.remove('hidden');
+            setShopNavActive('checkout');
+            const topCatalog = document.getElementById('top-btn-catalog');
+            const topCheckout = document.getElementById('top-btn-checkout');
+            if(topCatalog) {
+                topCatalog.className = 'px-3.5 py-1 rounded-full text-xs font-medium text-[#787574] hover:text-[#000000] hover:bg-[#f2f4f5] transition-all';
+            }
+            if(topCheckout) {
+                topCheckout.className = 'px-3.5 py-1 rounded-full text-xs font-bold bg-[#000000] text-white transition-all shadow-sm';
+            }
+            renderCheckoutSummary();
+            if(!currentPersona) {
+                switchTestAccount('safe');
+            }
+        };
+
+        const renderCheckoutSummary = () => {
+            const container = document.getElementById('checkout-cart-items');
+            let total = 0;
+            const items = Object.values(cart);
+
+            if(items.length === 0) {
+                container.innerHTML = `
+                    <div class="text-xs text-[#787574] py-6 text-center space-y-2">
+                        <div>🛍️ Your bag is currently empty.</div>
+                        <button onclick="showProductsView()" class="h-9 px-4 rounded-full bg-[#000000] text-white text-xs font-bold hover:bg-neutral-800 transition-all">
+                            Browse Discoveries ➔
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = items.map(it => {
+                    const lineTotal = it.product.price_inr * it.quantity;
+                    total += lineTotal;
+                    return `
+                        <div class="flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-[#000000]">${it.product.name}</span>
+                                <span class="text-[#787574] text-[10px] ml-1.5 font-mono">&times; ${it.quantity}</span>
+                            </div>
+                            <span class="font-mono text-[#000000] font-bold">${formatCurrency(lineTotal)}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const gst = Math.round(total * 0.18 / 1.18);
+            const subtotal = total - gst;
+
+            document.getElementById('checkout-subtotal').textContent = formatCurrency(subtotal);
+            document.getElementById('checkout-gst').textContent = formatCurrency(gst);
+            document.getElementById('checkout-total').textContent = formatCurrency(total);
+        };
+
+        const SHOW_FIRST_NAMES = [
+            "Naruto", "Kakashi", "Sasuke", "Itachi", "Jiraiya", "Hinata", "Minato", "Tsunade", "Gaara", "Shikamaru",
+            "Asta", "Yami", "Noelle", "Yuno", "Julius", "Mereoleona", "Luck", "Finral", "Charlotte", "Fuegoleon",
+            "Jon", "Daenerys", "Tyrion", "Arya", "Ned", "Cersei", "Jaime", "Sansa", "Bran", "Robb",
+            "Eren", "Levi", "Mikasa", "Armin", "Erwin", "Hange", "Jean", "Sasha", "Reiner", "Zeke",
+            "Harry", "Hermione", "Albus", "Severus", "Ron", "Draco", "Sirius", "Remus", "Luna", "Minerva",
+            "Walter", "Jesse", "Saul", "Gustavo", "Hank", "Mike", "Skyler", "Lalo"
+        ];
+
+        const SHOW_LAST_NAMES = [
+            "Uzumaki", "Uchiha", "Hatake", "Hyuga", "Namikaze", "Senju", "Nara",
+            "Clover", "Sukehiro", "Silva", "Grinberryall", "Novachrono", "Vermillion",
+            "Snow", "Targaryen", "Lannister", "Stark", "Baratheon", "Tyrell", "Martell",
+            "Yeager", "Ackerman", "Arlert", "Smith", "Zoe", "Kirstein", "Braus",
+            "Potter", "Granger", "Dumbledore", "Snape", "Weasley", "Malfoy", "Black",
+            "White", "Pinkman", "Goodman", "Fring", "Schrader", "Ehrmantraut"
+        ];
+
+        const SHOW_ADDRESSES = [
+            { unit: "Flat 402, Winterfell Keep", street: "Castle Black Road, Bellandur", city: "Bengaluru", pincode: "560103" },
+            { unit: "4 Privet Drive, Godric's Hollow", street: "Hogwarts Way, Electronic City", city: "Bengaluru", pincode: "560068" },
+            { unit: "Hokage Residence, 7th Floor", street: "Hidden Leaf Way, Indiranagar", city: "Bengaluru", pincode: "560008" },
+            { unit: "Black Bulls HQ, Room 5", street: "Clover Kingdom Lane, Koramangala", city: "Bengaluru", pincode: "560034" },
+            { unit: "308 Negra Arroyo Lane", street: "Albuquerque Heights, HSR Sector 2", city: "Bengaluru", pincode: "560102" },
+            { unit: "Shiganshina District, Sector 1", street: "Wall Maria Circle, Whitefield", city: "Bengaluru", pincode: "560066" },
+            { unit: "Los Pollos Hermanos Commercial Plaza", street: "24th Main, JP Nagar 5th Phase", city: "Bengaluru", pincode: "560078" },
+            { unit: "Dragonstone Citadel, Tower 1", street: "Outer Ring Road, Bellandur", city: "Bengaluru", pincode: "560103" },
+            { unit: "Survey Corps Garrison", street: "Scout Regiment Way, BTM 2nd Stage", city: "Bengaluru", pincode: "560076" },
+            { unit: "Red Keep Throne Room", street: "9th Main, Jayanagar 4th Block", city: "Bengaluru", pincode: "560041" },
+            { unit: "Diagon Alley Wand Shop", street: "100 Feet Road, Indiranagar", city: "Bengaluru", pincode: "560038" },
+            { unit: "Golden Dawn Tower", street: "5th Block Near Forum Mall, Koramangala", city: "Bengaluru", pincode: "560034" }
+        ];
+
+        let currentActiveAccountType = 'safe';
+        let currentPersona = null;
+
+        const switchTestAccount = (accountType) => {
+            currentActiveAccountType = accountType;
+
+            const fName = SHOW_FIRST_NAMES[Math.floor(Math.random() * SHOW_FIRST_NAMES.length)];
+            const lName = SHOW_LAST_NAMES[Math.floor(Math.random() * SHOW_LAST_NAMES.length)];
+            const fullName = `${fName} ${lName}`;
+
+            const addr = SHOW_ADDRESSES[Math.floor(Math.random() * SHOW_ADDRESSES.length)];
+            const randSuffix = Math.floor(10000000 + Math.random() * 90000000);
+
+            let phone = '';
+            let payMethod = 'COD';
+            let canvasText = '';
+
+            if(accountType === 'safe') {
+                phone = '98' + randSuffix.toString().substring(0, 8);
+                payMethod = Math.random() > 0.5 ? 'COD' : 'UPI';
+                canvasText = 'macOS Canvas 0.95 (Trusted Buyer)';
+            } else if(accountType === 'moderate') {
+                phone = '97' + randSuffix.toString().substring(0, 8);
+                payMethod = 'COD';
+                canvasText = 'Windows Canvas 0.72 (New Shopper / Deposit Step-Up)';
+            } else {
+                phone = '99' + randSuffix.toString().substring(0, 8);
+                payMethod = 'COD';
+                canvasText = 'Spoofed Proxy Canvas 0.15 (High Threat / Bot Pattern)';
+            }
+
+            currentPersona = {
+                name: fullName,
+                phone: phone,
+                unit: addr.unit,
+                street: addr.street,
+                city: addr.city,
+                pincode: addr.pincode,
+                pay: payMethod,
+                canvas: canvasText,
+            };
+
+            // If cart is empty, add default featured product to allow immediate test
+            if(Object.keys(cart).length === 0) {
+                cart['prod_001'] = { product: PRODUCTS[0], quantity: 1 };
+                updateCartBadges();
+                renderCheckoutSummary();
+            }
+
+            document.getElementById('cust-name').value = fullName;
+            document.getElementById('cust-phone').value = phone;
+            document.getElementById('cust-unit').value = addr.unit;
+            document.getElementById('cust-street').value = addr.street;
+            document.getElementById('cust-city').value = addr.city;
+            document.getElementById('cust-pincode').value = addr.pincode;
+            document.getElementById('cust-payment-method').value = payMethod;
+            document.getElementById('device-preview').textContent = canvasText;
+
+            const btnSafe = document.getElementById('btn-acc-safe');
+            const btnMod = document.getElementById('btn-acc-moderate');
+            const btnRed = document.getElementById('btn-acc-red');
+            const badge = document.getElementById('active-account-badge');
+
+            if(btnSafe && btnMod && btnRed && badge) {
+                btnSafe.className = 'h-11 rounded-full bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-medium flex items-center justify-center space-x-1.5 transition-all hover:border-emerald-400';
+                btnMod.className = 'h-11 rounded-full bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-medium flex items-center justify-center space-x-1.5 transition-all hover:border-amber-400';
+                btnRed.className = 'h-11 rounded-full bg-[#f2f4f5] border border-[#ebebeb] text-[#000000] text-xs font-medium flex items-center justify-center space-x-1.5 transition-all hover:border-rose-400';
+
+                if(accountType === 'safe') {
+                    btnSafe.className = 'h-11 rounded-full bg-emerald-50 border-2 border-emerald-500 text-emerald-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-sm';
+                    badge.className = 'h-8 px-3 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold flex items-center';
+                    badge.textContent = `Safe: ${fullName}`;
+                } else if(accountType === 'moderate') {
+                    btnMod.className = 'h-11 rounded-full bg-amber-50 border-2 border-amber-500 text-amber-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-sm';
+                    badge.className = 'h-8 px-3 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold flex items-center';
+                    badge.textContent = `Moderate: ${fullName}`;
+                } else {
+                    btnRed.className = 'h-11 rounded-full bg-rose-50 border-2 border-rose-500 text-rose-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-sm';
+                    badge.className = 'h-8 px-3 rounded-full bg-rose-50 text-rose-800 border border-rose-200 text-xs font-semibold flex items-center';
+                    badge.textContent = `Red Threat: ${fullName}`;
+                }
+            }
+
+            showCheckoutView();
+            emitTypingTelemetry('account_switch');
+        };
+
+        let typingDebounceTimer = null;
+        const emitTypingTelemetry = (fieldId = 'general') => {
+            clearTimeout(typingDebounceTimer);
+            typingDebounceTimer = setTimeout(async () => {
+                const name = document.getElementById('cust-name')?.value || 'Shopper';
+                const phone = document.getElementById('cust-phone')?.value || '';
+                const unit = document.getElementById('cust-unit')?.value || '';
+                const street = document.getElementById('cust-street')?.value || '';
+                const city = document.getElementById('cust-city')?.value || 'Bengaluru';
+                const pincode = document.getElementById('cust-pincode')?.value || '560103';
+                const payMethod = document.getElementById('cust-payment-method')?.value || 'COD';
+                const rawAddr = `${unit}, ${street}, ${city} ${pincode}`.trim();
+                const canvasText = document.getElementById('device-preview')?.textContent || 'macOS Canvas 0.95';
+
+                try {
+                    await fetch(`${API_BASE}/api/stream/typing`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            customer_name: name,
+                            customer_phone: phone,
+                            raw_address: rawAddr,
+                            pincode: pincode,
+                            payment_method: payMethod,
+                            device_canvas: canvasText,
+                            field_modified: fieldId,
+                            session_id: 'shopper_session_' + (window.__sentinel_session_id || (window.__sentinel_session_id = Math.random().toString(36).substring(2, 8)))
+                        })
+                    });
+                } catch(e) {
+                    console.debug('Typing telemetry stream error:', e);
+                }
+            }, 5);
+        };
+
+        const setupTypingListeners = () => {
+            ['cust-name', 'cust-phone', 'cust-unit', 'cust-street', 'cust-city', 'cust-pincode', 'cust-payment-method'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) {
+                    el.addEventListener('input', () => emitTypingTelemetry(id));
+                    el.addEventListener('keyup', () => emitTypingTelemetry(id));
+                    el.addEventListener('change', () => emitTypingTelemetry(id));
+                    el.addEventListener('focus', () => emitTypingTelemetry(id));
+                }
+            });
+        };
+
+        const submitRealtimeOrder = async () => {
+            const btn = document.getElementById('btn-place-order');
+            const btnText = document.getElementById('btn-order-text');
+
+            if(Object.keys(cart).length === 0) {
+                cart['prod_001'] = { product: PRODUCTS[0], quantity: 1 };
+                updateCartBadges();
+                renderCheckoutSummary();
+            }
+
+            const itemsArray = Object.values(cart).map(it => ({
+                product_id: it.product.id,
+                name: it.product.name,
+                hsn_code: it.product.hsn,
+                quantity: it.quantity,
+                unit_price_paise: it.product.price_inr * 100,
+                price_paise: it.product.price_inr * 100,
+            }));
+
+            let totalPaise = 0;
+            itemsArray.forEach(it => totalPaise += it.unit_price_paise * it.quantity);
+
+            const name = document.getElementById('cust-name').value.trim() || 'Customer';
+            const phone = document.getElementById('cust-phone').value.trim() || '9876543210';
+            const unit = document.getElementById('cust-unit').value.trim();
+            const street = document.getElementById('cust-street').value.trim();
+            const city = document.getElementById('cust-city').value.trim();
+            const pincode = document.getElementById('cust-pincode').value.trim() || '560103';
+            const payMethod = document.getElementById('cust-payment-method').value;
+
+            const rawAddress = `${unit}, ${street}, ${city}, ${pincode}`;
+
+            btn.disabled = true;
+            btnText.textContent = 'Evaluating with Sentinel AI...';
+
+            const isRed = currentActiveAccountType === 'red' || name.includes('Bot') || name.includes('Heisenberg') || name.includes('Titan') || name.includes('Voldemort');
+            const isMod = currentActiveAccountType === 'moderate' || name.includes('Asta') || name.includes('Yami') || name.includes('Pinkman');
+
+            let sdkTokenData = {
+                device_fingerprint_hash: 'dev_' + Math.abs((name + (isRed ? '_red_threat' : '')).split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)).toString(16),
+                canvas_entropy_score: isRed ? 0.15 : (isMod ? 0.72 : 0.95),
+                is_bot_keystrokes: isRed,
+                session_duration_ms: isRed ? 350 : (isMod ? 2200 : 4500),
+            };
+
+            if (window.SentinelSDK) {
+                try {
+                    const sdk = new window.SentinelSDK({ merchantId: 'merch_01' });
+                    const tokenRes = await sdk.tokenize({ name, phone, amount_paise: totalPaise });
+                    sdkTokenData.sentinel_token = tokenRes.sentinel_token;
+                    sdkTokenData.nonce = tokenRes.nonce;
+                    if(!isRed && !isMod) {
+                        sdkTokenData.device_fingerprint_hash = tokenRes.device_fingerprint_hash || sdkTokenData.device_fingerprint_hash;
+                        sdkTokenData.canvas_entropy_score = tokenRes.canvas_entropy_score || 0.95;
+                    }
+                } catch(e) {
+                    console.debug('SentinelSDK tokenization fallback:', e);
+                }
+            }
+
+            const payload = {
+                merchant_id: 'merch_01',
+                customer: {
+                    name: name,
+                    phone: phone,
+                    account_age_days: isRed ? 1 : (isMod ? 15 : 140),
+                    historical_orders_count: isRed ? 0 : (isMod ? 1 : 6),
+                    rto_count: isRed ? 3 : 0,
+                },
+                device: {
+                    fingerprint_hash: sdkTokenData.device_fingerprint_hash,
+                    canvas_hash: String(isRed ? 0.15 : (isMod ? 0.72 : (sdkTokenData.canvas_entropy_score || 0.95))),
+                    is_proxy: isRed,
+                    session_duration_ms: isRed ? 350 : (isMod ? 2200 : 4200),
+                    client_signals: {
+                        is_bot_keystrokes: isRed,
+                        form_fill_duration_ms: isRed ? 350 : (isMod ? 2200 : 4200),
+                        canvas_entropy_score: isRed ? 0.15 : (isMod ? 0.72 : (sdkTokenData.canvas_entropy_score || 0.95)),
+                        sentinel_token: sdkTokenData.sentinel_token,
+                        nonce: sdkTokenData.nonce,
+                    }
+                },
+                location: {
+                    pincode: pincode,
+                    raw_address: rawAddress,
+                },
+                amount_in_paise: totalPaise,
+                payment_method: payMethod,
+                items: itemsArray,
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/api/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if(res.ok) {
+                    const result = await res.json();
+                    result.amount_paise = result.amount_paise || totalPaise;
+                    lastPlacedOrder = result;
+                    lastCreatedInvoice = result.invoice || {};
+                    showDecisionModal(result);
+                } else {
+                    const errText = await res.text();
+                    console.error('Order submit server error:', res.status, errText);
+                    alert('Order submission returned error: ' + errText);
+                }
+            } catch(e) {
+                console.error('Order submit error:', e);
+                alert('Connection error placing order. Please check that server is running.');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Place Real-Time Order ⚡';
+            }
+        };
+
+        const showDecisionModal = (result) => {
+            const modal = document.getElementById('decision-modal');
+            const card = document.getElementById('decision-card');
+            const actionType = (typeof result.action === 'object' ? result.action.type : result.action) || result.risk_tier || 'ALLOW';
+            
+            // Calculate accurate order value in INR
+            let amtInr = 0;
+            if (result.amount_paise) {
+                amtInr = result.amount_paise / 100;
+            } else if (result.invoice && result.invoice.total_amount_inr) {
+                amtInr = result.invoice.total_amount_inr;
+            } else if (Object.keys(cart).length > 0) {
+                amtInr = Object.values(cart).reduce((acc, it) => acc + (it.product.price_inr * it.quantity), 0);
+            } else {
+                amtInr = 1499;
+            }
+            const balanceDue = Math.max(0, amtInr - 49);
+            const payStatus = result.payment_status || 'COD_PENDING';
+
+            if(payStatus === 'PAID_ONLINE' || result.payment_method === 'UPI' || result.payment_method === 'PREPAID') {
+                card.innerHTML = `
+                    <div class="text-center space-y-4">
+                        <div class="w-14 h-14 bg-[#5433eb]/10 text-[#5433eb] rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
+                        <h3 class="text-lg font-black text-[#000000] tracking-tight">Payment Verified &amp; Order Confirmed!</h3>
+                        <p class="text-xs text-[#787574]">Your payment of <strong class="text-[#000000]">${formatCurrency(amtInr)}</strong> was confirmed via instant UPI.</p>
+                        
+                        <div class="bg-[#f2f4f5] rounded-[20px] p-4 text-left text-xs space-y-1.5 text-[#000000] border border-[#ebebeb]">
+                            <div>• <strong>Order Reference:</strong> <span class="font-mono font-bold">${result.order_id}</span></div>
+                            <div>• <strong>Destination:</strong> ${result.area_name || result.pincode}</div>
+                            <div>• <strong>Fulfillment:</strong> Dispatched from Electronic City Hub</div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <button onclick="showInvoiceModal()" class="w-full h-11 rounded-full bg-[#000000] hover:bg-neutral-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm">
+                                <span>📄 View Official GST Tax Invoice</span>
+                            </button>
+                            <button onclick="closeDecisionModal()" class="w-full h-11 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] font-semibold text-xs transition-all">
+                                Continue Exploring
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if(payStatus === 'DEPOSIT_PAID') {
+                card.innerHTML = `
+                    <div class="text-center space-y-4">
+                        <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">💎</div>
+                        <h3 class="text-lg font-black text-[#000000] tracking-tight">₹49 Deposit Verified — COD Unlocked!</h3>
+                        <p class="text-xs text-[#787574]">Your ₹49 verification deposit was received. Doorstep COD balance: <strong class="text-[#000000]">${formatCurrency(balanceDue)}</strong>.</p>
+                        
+                        <div class="bg-emerald-50 rounded-[20px] p-4 text-left text-xs space-y-1.5 text-emerald-950 border border-emerald-200">
+                            <div>• <strong>Order ID:</strong> <span class="font-mono font-bold">${result.order_id}</span></div>
+                            <div>• <strong>Advance Credited:</strong> ₹49.00 (Deducted from bill)</div>
+                            <div>• <strong>Pay at Doorstep:</strong> <strong class="text-emerald-700">${formatCurrency(balanceDue)}</strong></div>
+                            <div class="text-[11px] text-amber-900 font-semibold pt-1 border-t border-emerald-200">⚠️ Policy: The ₹49 advance deposit is <strong>non-refundable</strong> in case of doorstep refusal (RTO).</div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <button onclick="showInvoiceModal()" class="w-full h-11 rounded-full bg-[#000000] hover:bg-neutral-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm">
+                                <span>📄 View Official GST Tax Invoice</span>
+                            </button>
+                            <button onclick="closeDecisionModal()" class="w-full h-11 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] font-semibold text-xs transition-all">
+                                Continue Exploring
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if(actionType === 'ALLOW') {
+                card.innerHTML = `
+                    <div class="text-center space-y-4">
+                        <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✓</div>
+                        <h3 class="text-lg font-black text-[#000000] tracking-tight">Cash on Delivery Confirmed!</h3>
+                        <p class="text-xs text-[#787574]">Your COD order of <strong class="text-[#000000]">${formatCurrency(amtInr)}</strong> has been verified by Sentinel AI.</p>
+                        
+                        <div class="bg-[#f2f4f5] rounded-[20px] p-4 text-left text-xs space-y-1.5 text-[#000000] border border-[#ebebeb]">
+                            <div>• <strong>Order Reference:</strong> <span class="font-mono font-bold">${result.order_id}</span></div>
+                            <div>• <strong>Doorstep Amount:</strong> ${formatCurrency(amtInr)} (Cash or QR UPI)</div>
+                            <div>• <strong>Destination:</strong> ${result.area_name || result.pincode}</div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <button onclick="showInvoiceModal()" class="w-full h-11 rounded-full bg-[#000000] hover:bg-neutral-800 text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-sm">
+                                <span>📄 View Official GST Tax Invoice</span>
+                            </button>
+                            <button onclick="closeDecisionModal()" class="w-full h-11 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] font-semibold text-xs transition-all">
+                                Continue Exploring
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if(actionType === 'CHALLENGE_DEPOSIT') {
+                card.innerHTML = `
+                    <div class="text-center space-y-4">
+                        <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">₹</div>
+                        <h3 class="text-lg font-black text-[#000000] tracking-tight">₹49 Verification Deposit Required</h3>
+                        <p class="text-xs text-[#787574]">To unlock Doorstep Cash on Delivery for this order (<strong class="text-[#000000]">${formatCurrency(amtInr)}</strong>), please complete a <strong>₹49 verification deposit</strong> via instant UPI.</p>
+                        
+                        <div class="bg-amber-50 rounded-[20px] p-4 text-left text-xs space-y-1.5 text-amber-950 border border-amber-200">
+                            <div>• <strong>100% Credited:</strong> The ₹49 is fully deducted from your doorstep bill.</div>
+                            <div>• <strong>Doorstep Balance:</strong> Pay remaining <strong class="text-emerald-800">${formatCurrency(balanceDue)}</strong> at delivery.</div>
+                            <div class="text-[11px] text-rose-800 font-semibold pt-1 border-t border-amber-200">⚠️ Policy: The ₹49 verification deposit is <strong>non-refundable</strong> in case of doorstep refusal / RTO.</div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <button onclick="payUPIAndRecover('${result.order_id}', 49, true)" class="w-full h-11 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white font-bold text-xs transition-all shadow-[rgba(84,51,235,0.34)_0px_4px_24px_0px]">
+                                Pay ₹49 Verification Deposit via Instant UPI
+                            </button>
+                            <button onclick="payUPIAndRecover('${result.order_id}', ${amtInr}, false)" class="w-full h-11 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] font-semibold text-xs transition-all">
+                                Pay Full Amount Online (${formatCurrency(amtInr)})
+                            </button>
+                            <button onclick="closeDecisionModal()" class="w-full text-xs text-[#787574] hover:underline">
+                                Cancel Order
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div class="text-center space-y-4">
+                        <div class="w-14 h-14 bg-rose-100 text-rose-700 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">✕</div>
+                        <h3 class="text-lg font-black text-[#000000] tracking-tight">Doorstep COD Unavailable</h3>
+                        <p class="text-xs text-[#787574]">Cash on delivery is disabled for this address/proxy profile. Complete your order (<strong class="text-[#000000]">${formatCurrency(amtInr)}</strong>) via secure online UPI payment.</p>
+                        
+                        <div class="bg-rose-50 rounded-[20px] p-4 text-left text-xs space-y-1.5 text-rose-950 border border-rose-200">
+                            <div>• <strong>Instant UPI:</strong> Google Pay, PhonePe, Paytm, BHIM UPI.</div>
+                            <div>• <strong>Guarantee:</strong> 100% money-back guarantee with doorstep tracking.</div>
+                        </div>
+
+                        <div class="space-y-2 pt-2">
+                            <button onclick="payUPIAndRecover('${result.order_id}', ${amtInr}, false)" class="w-full h-11 rounded-full bg-[#5433eb] hover:bg-[#4524db] text-white font-bold text-xs transition-all shadow-[rgba(84,51,235,0.34)_0px_4px_24px_0px]">
+                                Complete Payment via UPI (${formatCurrency(amtInr)})
+                            </button>
+                            <button onclick="closeDecisionModal()" class="w-full h-11 rounded-full bg-[#f2f4f5] hover:bg-[#ebebeb] text-[#000000] font-semibold text-xs transition-all">
+                                Return to Shop
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+        };
+
+        const payUPIAndRecover = async (orderId, amountInr, isDeposit = false) => {
+            try {
+                const res = await fetch(`${API_BASE}/api/orders/${orderId}/pay_upi?deposit_only=${isDeposit}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ upi_ref: 'upi_ref_' + Date.now(), deposit_only: isDeposit }),
+                });
+
+                if(res.ok) {
+                    const data = await res.json();
+                    const newStatus = isDeposit ? 'DEPOSIT_PAID' : 'PAID_ONLINE';
+                    const fullAmtPaise = (lastPlacedOrder && lastPlacedOrder.amount_paise) || (amountInr * 100);
+                    if(lastPlacedOrder) {
+                        lastPlacedOrder.payment_status = newStatus;
+                        lastPlacedOrder.action = 'ALLOW';
+                        lastPlacedOrder.amount_paise = fullAmtPaise;
+                        lastPlacedOrder.invoice = data.invoice || lastPlacedOrder.invoice;
+                    }
+                    if(data.invoice) {
+                        lastCreatedInvoice = data.invoice;
+                    }
+                    showDecisionModal({
+                        ...(lastPlacedOrder || {}),
+                        order_id: orderId,
+                        payment_status: newStatus,
+                        action: 'ALLOW',
+                        amount_paise: fullAmtPaise,
+                        invoice: data.invoice,
+                    });
+                }
+            } catch(e) {
+                console.error('UPI recovery error:', e);
+            }
+        };
+
+        const closeDecisionModal = () => {
+            document.getElementById('decision-modal').classList.add('hidden');
+        };
+
+        const showInvoiceModal = () => {
+            if(!lastCreatedInvoice) return;
+            const modal = document.getElementById('invoice-modal');
+            const container = document.getElementById('invoice-print-area');
+            const inv = lastCreatedInvoice;
+
+            const isDepositPaid = (lastPlacedOrder && lastPlacedOrder.payment_status === 'DEPOSIT_PAID');
+            const isFullyPaidOnline = (lastPlacedOrder && lastPlacedOrder.payment_status === 'PAID_ONLINE');
+            const totalAmt = inv.total_amount_inr || 0;
+            const balanceDue = isDepositPaid ? Math.max(0, totalAmt - 49) : (isFullyPaidOnline ? 0 : totalAmt);
+
+            const rowsHtml = (inv.items || []).map(i => `
+                <tr class="border-b border-[#ebebeb] text-xs">
+                    <td class="py-2.5 font-bold text-[#000000]">${i.name}</td>
+                    <td class="py-2.5 text-[#787574] font-mono text-center">${i.hsn_code || '85183000'}</td>
+                    <td class="py-2.5 text-center font-bold text-[#000000]">${i.quantity}</td>
+                    <td class="py-2.5 text-right font-mono text-[#000000]">${formatCurrency(i.unit_price_inr)}</td>
+                    <td class="py-2.5 text-right font-mono font-bold text-[#000000]">${formatCurrency(i.total_inr)}</td>
+                </tr>
+            `).join('');
+
+            container.innerHTML = `
+                <div class="space-y-6 text-[#000000] bg-white p-2">
+                    <div class="flex justify-between items-start border-b-2 border-[#000000] pb-4">
+                        <div>
+                            <div class="text-3xl font-black text-[#000000] tracking-tighter">TAX INVOICE</div>
+                            <div class="text-xs text-[#787574] font-semibold mt-1">Invoice No: <span class="font-mono text-[#000000] font-black">${inv.invoice_number}</span></div>
+                            <div class="text-xs text-[#787574]">Date: <span class="font-medium text-[#000000]">${inv.invoice_date}</span></div>
+                            <div class="text-xs text-[#787574]">Order Ref: <span class="font-mono text-[#000000]">${lastPlacedOrder?.order_id || 'N/A'}</span></div>
+                        </div>
+                        <div class="text-right space-y-0.5">
+                            <div class="font-black text-sm text-[#000000]">ShopEasy India Technologies Pvt. Ltd.</div>
+                            <div class="text-xs text-[#787574] font-mono">GSTIN: <span class="font-bold text-[#000000]">${inv.gstin}</span></div>
+                            <div class="text-xs text-[#787574] font-mono">CIN: U72900KA2024PTC123456 | PAN: AAECS1234F</div>
+                            <div class="text-xs text-[#787574]">${inv.warehouse_hub}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 text-xs">
+                        <div class="p-4 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb] space-y-1">
+                            <div class="font-bold text-[#787574] uppercase text-[10px] tracking-wider">Billed &amp; Shipped To:</div>
+                            <div class="font-black text-[#000000] text-sm">${inv.customer_name}</div>
+                            <div class="text-[#787574] font-mono">📞 +91 ${inv.customer_phone}</div>
+                            <div class="text-[#787574]">${inv.shipping_address}</div>
+                            <div class="text-[#787574] font-mono">Pincode: <strong>${inv.pincode}</strong></div>
+                        </div>
+                        <div class="p-4 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb] space-y-1">
+                            <div class="font-bold text-[#787574] uppercase text-[10px] tracking-wider">Supply &amp; Logistics:</div>
+                            <div>Place of Supply: <strong class="text-[#000000]">${inv.place_of_supply}</strong></div>
+                            <div>State Code: <strong class="text-[#000000] font-mono">${inv.state_code}</strong></div>
+                            <div>Payment Method: <strong class="text-[#000000] font-mono">${lastPlacedOrder?.payment_method || 'COD'}</strong></div>
+                            <div>Status: <strong class="${isFullyPaidOnline ? 'text-[#5433eb]' : (isDepositPaid ? 'text-emerald-700' : 'text-amber-700')}">${isFullyPaidOnline ? 'PAID ONLINE (UPI)' : (isDepositPaid ? '₹49 ADVANCE DEPOSIT PAID' : 'CASH ON DELIVERY VERIFIED')}</strong></div>
+                        </div>
+                    </div>
+
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b-2 border-[#000000] text-[11px] font-black text-[#787574] uppercase tracking-wider bg-[#f2f4f5]">
+                                <th class="py-2.5 px-2">Item Description</th>
+                                <th class="py-2.5 px-2 text-center">HSN/SAC</th>
+                                <th class="py-2.5 px-2 text-center">Qty</th>
+                                <th class="py-2.5 px-2 text-right">Unit Rate</th>
+                                <th class="py-2.5 px-2 text-right">Amount (INR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="grid grid-cols-12 gap-4 pt-2">
+                        <div class="col-span-6 space-y-2 text-xs text-[#787574]">
+                            <div class="p-3 bg-[#f2f4f5] rounded-[20px] border border-[#ebebeb] space-y-1">
+                                <div class="font-bold text-[#000000] text-[11px]">Declaration:</div>
+                                <div>This is a computer-generated tax invoice verified by Sentinel Risk Engine.</div>
+                                ${isDepositPaid ? '<div class="text-rose-700 font-semibold text-[10px] pt-1 border-t border-[#ebebeb]">* ₹49 advance verification deposit is non-refundable in case of doorstep refusal / RTO.</div>' : ''}
+                            </div>
+                        </div>
+
+                        <div class="col-span-6 flex justify-end">
+                            <div class="w-72 space-y-1.5 text-xs">
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>Taxable Subtotal:</span>
+                                    <span class="font-mono font-bold text-[#000000]">${formatCurrency(inv.taxable_amount_inr)}</span>
+                                </div>
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>CGST (9%):</span>
+                                    <span class="font-mono text-[#000000]">${formatCurrency(inv.cgst_amount_inr)}</span>
+                                </div>
+                                <div class="flex justify-between text-[#787574]">
+                                    <span>SGST (9%):</span>
+                                    <span class="font-mono text-[#000000]">${formatCurrency(inv.sgst_amount_inr)}</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t-2 border-[#000000] font-black text-sm text-[#000000]">
+                                    <span>Total Invoice Value:</span>
+                                    <span class="font-mono text-base font-black text-[#000000]">${formatCurrency(totalAmt)}</span>
+                                </div>
+
+                                ${isDepositPaid ? `
+                                    <div class="flex justify-between text-emerald-700 pt-1 font-bold">
+                                        <span>Less: Advance Deposit (UPI):</span>
+                                        <span class="font-mono">-₹49.00</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-base text-[#5433eb]">
+                                        <span>Doorstep Balance Due:</span>
+                                        <span class="font-mono font-black">${formatCurrency(balanceDue)}</span>
+                                    </div>
+                                ` : (isFullyPaidOnline ? `
+                                    <div class="flex justify-between text-[#5433eb] pt-1 font-bold">
+                                        <span>Amount Paid via UPI:</span>
+                                        <span class="font-mono">${formatCurrency(totalAmt)}</span>
+                                    </div>
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-sm text-emerald-700">
+                                        <span>Balance Due:</span>
+                                        <span class="font-mono font-black">₹0.00 (Fully Paid)</span>
+                                    </div>
+                                ` : `
+                                    <div class="flex justify-between pt-1.5 border-t border-dashed border-[#ebebeb] font-black text-base text-[#000000]">
+                                        <span>Payable at Doorstep:</span>
+                                        <span class="font-mono font-black text-[#5433eb]">${formatCurrency(totalAmt)}</span>
+                                    </div>
+                                `)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        };
+
+        const closeInvoiceModal = () => {
+            document.getElementById('invoice-modal').classList.add('hidden');
+        };
+
+        // Initial immediate execution
+        renderProducts();
+        updateCartBadges();
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderProducts();
+            updateCartBadges();
+            setupTypingListeners();
+        });
+    </script>
+</body>
+</html>

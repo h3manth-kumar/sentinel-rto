@@ -1,0 +1,40 @@
+# API Framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Database
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.31
+alembic==1.13.2
+
+# Redis
+redis[hiredis]==5.0.7
+
+# Kafka
+aiokafka==0.10.0
+confluent-kafka==2.5.0
+
+# ML / Inference
+onnxruntime==1.18.1
+lightgbm==4.4.0
+shap==0.45.1
+
+# Spatial
+h3==3.7.7
+
+# Graph
+networkx==3.3
+
+# Validation & Config
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+httpx==0.27.0
+
+# Linting & Formatting
+ruff==0.5.2
+black==24.4.2
+mypy==1.10.1

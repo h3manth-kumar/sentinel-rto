@@ -1,0 +1,58 @@
+[
+  {
+    "feature": "device_rto_rate",
+    "importance": 749913.7449
+  },
+  {
+    "feature": "account_age_days",
+    "importance": 173416.4763
+  },
+  {
+    "feature": "form_fill_duration_ms",
+    "importance": 39469.8131
+  },
+  {
+    "feature": "h3_density_weight",
+    "importance": 31917.9721
+  },
+  {
+    "feature": "amount_in_paise",
+    "importance": 29354.4006
+  },
+  {
+    "feature": "h3_cluster_rto_rate",
+    "importance": 28561.2555
+  },
+  {
+    "feature": "canvas_entropy_score",
+    "importance": 25938.8463
+  },
+  {
+    "feature": "device_order_count",
+    "importance": 13062.031
+  },
+  {
+    "feature": "is_cod",
+    "importance": 3868.1561
+  },
+  {
+    "feature": "burst_count_device",
+    "importance": 2144.3382
+  },
+  {
+    "feature": "burst_count_h3",
+    "importance": 511.9902
+  },
+  {
+    "feature": "is_bot_keystrokes",
+    "importance": 220.5101
+  },
+  {
+    "feature": "cluster_size",
+    "importance": 0.0
+  },
+  {
+    "feature": "cluster_rto_rate",
+    "importance": 0.0
+  }
+]
