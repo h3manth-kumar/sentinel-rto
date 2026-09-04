@@ -18,6 +18,46 @@ import h3
 
 logger = logging.getLogger(__name__)
 
+
+def _latlng_to_cell(lat: float, lng: float, res: int) -> str:
+    if hasattr(h3, "latlng_to_cell"):
+        return h3.latlng_to_cell(lat, lng, res)
+    elif hasattr(h3, "geo_to_h3"):
+        return h3.geo_to_h3(lat, lng, res)
+    return f"h3_{res}_{int(lat*1000)}_{int(lng*1000)}"
+
+
+def _cell_to_parent(cell: str, res: int) -> str:
+    if hasattr(h3, "cell_to_parent"):
+        return h3.cell_to_parent(cell, res)
+    elif hasattr(h3, "h3_to_parent"):
+        return h3.h3_to_parent(cell, res)
+    return cell
+
+
+def _grid_disk(cell: str, ring_size: int = 1) -> list[str]:
+    if hasattr(h3, "grid_disk"):
+        return list(h3.grid_disk(cell, ring_size))
+    elif hasattr(h3, "k_ring"):
+        return list(h3.k_ring(cell, ring_size))
+    return [cell]
+
+
+def _grid_distance(cell_a: str, cell_b: str) -> int:
+    if hasattr(h3, "grid_distance"):
+        return h3.grid_distance(cell_a, cell_b)
+    elif hasattr(h3, "h3_distance"):
+        return h3.h3_distance(cell_a, cell_b)
+    return 1
+
+
+def _get_resolution(cell: str) -> int:
+    if hasattr(h3, "get_resolution"):
+        return h3.get_resolution(cell)
+    elif hasattr(h3, "h3_get_resolution"):
+        return h3.h3_get_resolution(cell)
+    return 9
+
 # Centroids and known sub-localities for granular spatial resolution
 PINCODE_REGISTRY: dict[str, dict[str, Any]] = {
     # --- Greater Bengaluru Zones ---
@@ -611,10 +651,10 @@ class H3SpatialEngine:
         confidence: float,
     ) -> H3SpatialResult:
         """Compute Uber H3 cell indices across fine, coarse, and doorstep resolutions."""
-        res7 = h3.latlng_to_cell(lat, lng, self.H3_RES_WARD)
-        res8 = h3.latlng_to_cell(lat, lng, self.H3_RES_COARSE)
-        res9 = h3.latlng_to_cell(lat, lng, self.H3_RES_FINE)
-        res10 = h3.latlng_to_cell(lat, lng, self.H3_RES_DOORSTEP)
+        res7 = _latlng_to_cell(lat, lng, self.H3_RES_WARD)
+        res8 = _latlng_to_cell(lat, lng, self.H3_RES_COARSE)
+        res9 = _latlng_to_cell(lat, lng, self.H3_RES_FINE)
+        res10 = _latlng_to_cell(lat, lng, self.H3_RES_DOORSTEP)
 
         # Apartment multi-tenant anomaly check:
         # If in a high-density apartment complex, individual device entropy must override spatial prior
@@ -649,12 +689,12 @@ class H3SpatialEngine:
 
     def get_hex_neighbors(self, h3_index: str, ring_size: int = 1) -> list[str]:
         """Get neighboring hexagons for spatial proximity and syndicate ring analysis."""
-        return list(h3.grid_disk(h3_index, ring_size))
+        return _grid_disk(h3_index, ring_size)
 
     def compute_hex_distance(self, h3_a: str, h3_b: str) -> int:
         """Compute hexagonal grid distance between two H3 spatial cells."""
         try:
-            return h3.grid_distance(h3_a, h3_b)
+            return _grid_distance(h3_a, h3_b)
         except Exception:
             return 999
 
@@ -674,7 +714,7 @@ class H3SpatialEngine:
         history = order_history_by_cell or {}
 
         try:
-            current_res = h3.get_resolution(h3_index)
+            current_res = _get_resolution(h3_index)
         except Exception:
             current_res = 9
 
@@ -702,7 +742,7 @@ class H3SpatialEngine:
         for parent_res in target_resolutions:
             if current_res > parent_res:
                 try:
-                    parent_cell = h3.cell_to_parent(h3_index, parent_res)
+                    parent_cell = _cell_to_parent(h3_index, parent_res)
                     if parent_cell in history and history[parent_cell].get("order_count", 0) >= min_order_threshold:
                         p_orders = history[parent_cell]["order_count"]
                         p_rtos = history[parent_cell].get("rto_count", 0)
@@ -725,7 +765,7 @@ class H3SpatialEngine:
         pin_info = self._registry.get(default_pincode, self._registry.get("560103", {}))
         baseline = pin_info.get("rto_baseline", 0.035) if isinstance(pin_info, dict) else 0.035
         try:
-            parent_7 = h3.cell_to_parent(h3_index, 7) if current_res > 7 else h3_index
+            parent_7 = _cell_to_parent(h3_index, 7) if current_res > 7 else h3_index
         except Exception:
             parent_7 = h3_index
 
