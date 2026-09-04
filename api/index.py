@@ -37,44 +37,46 @@ async def app(scope, receive, send):
 
     if scope["type"] == "http":
         headers = dict(scope.get("headers", []))
-        headers_str = "\n".join(f"{k.decode('latin1')}: {v.decode('latin1')}" for k, v in headers.items())
         
-        # If probe in query string or headers
-        qs = scope.get("query_string", b"").decode("latin1")
-        if "probe" in qs or "probe" in headers_str:
-            body = f"SCOPE PATH: {scope.get('path')}\nQUERY STRING: {qs}\n\nHEADERS:\n{headers_str}".encode("utf-8")
-            await send({
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [
-                    (b"content-type", b"text/plain; charset=utf-8"),
-                    (b"content-length", str(len(body)).encode("ascii")),
-                ],
-            })
-            await send({
-                "type": "http.response.body",
-                "body": body,
-            })
-            return
-        headers = dict(scope.get("headers", []))
-        matched = False
-        for h_name in (b"x-matched-path", b"x-forwarded-uri", b"x-invoke-path", b"x-original-url", b"x-rewrite-url"):
-            val = headers.get(h_name)
-            if val:
-                decoded = val.decode("utf-8", errors="ignore")
-                if decoded and not decoded.startswith("/api/index"):
-                    path_only = decoded.split("?")[0]
-                    scope["path"] = path_only
-                    matched = True
-                    break
-        
-        if not matched:
-            path = scope.get("path", "/")
-            if path.startswith("/api/index"):
-                new_path = path[len("/api/index"):]
-                if not new_path or not new_path.startswith("/"):
-                    new_path = "/" + new_path
-                scope["path"] = new_path
+        # 1. Check x-now-route-matches (Vercel rewrite regex capture group $1)
+        resolved_path = None
+        route_matches = headers.get(b"x-now-route-matches")
+        if route_matches:
+            try:
+                import urllib.parse
+                parsed = urllib.parse.parse_qs(route_matches.decode("latin1"))
+                if "1" in parsed and parsed["1"]:
+                    val = parsed["1"][0]
+                    resolved_path = "/" + val.lstrip("/")
+            except Exception:
+                pass
+
+        # 2. Check x-forwarded-url / x-forwarded-uri / x-original-url / x-invoke-path
+        if not resolved_path:
+            import urllib.parse
+            for h in (b"x-forwarded-url", b"x-forwarded-uri", b"x-original-url", b"x-invoke-path", b"x-rewrite-url"):
+                val = headers.get(h)
+                if val:
+                    decoded = val.decode("latin1", errors="ignore")
+                    if decoded.startswith("http://") or decoded.startswith("https://"):
+                        url_path = urllib.parse.urlparse(decoded).path
+                        if url_path:
+                            resolved_path = url_path
+                            break
+                    elif decoded and not decoded.startswith("/api/index"):
+                        resolved_path = decoded.split("?")[0]
+                        break
+
+        # 3. Fallback to scope path
+        if not resolved_path:
+            scope_path = scope.get("path", "/")
+            if scope_path.startswith("/api/index"):
+                stripped = scope_path[len("/api/index"):]
+                resolved_path = "/" + stripped.lstrip("/")
+            else:
+                resolved_path = scope_path
+
+        scope["path"] = resolved_path
 
     try:
         await fastapi_app(scope, receive, send)
