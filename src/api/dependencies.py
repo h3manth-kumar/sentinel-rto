@@ -33,9 +33,8 @@ deps = Dependencies()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan: start/stop all shared services."""
+    """Application lifespan: start/stop all shared services for long-running servers."""
     settings = get_settings()
-    is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
     # --- ONNX Inference Engine ---
     try:
@@ -48,37 +47,34 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("ONNX inference engine failed to start: %s. Using fallback scores.", e)
         deps.inference_engine = None
 
-    # In serverless environments with localhost Redis/Kafka, skip connecting to prevent socket hangs
-    if not is_serverless or "localhost" not in settings.redis_url:
-        # --- Redis Feature Store ---
-        try:
-            deps.feature_store = RedisFeatureStore(redis_url=settings.redis_url)
-            await asyncio.wait_for(deps.feature_store.connect(), timeout=0.15)
-            logger.info("Redis feature store connected.")
-        except Exception as e:
-            logger.warning("Redis feature store unavailable: %s. Using fallbacks.", e)
-            deps.feature_store = None
+    # --- Redis Feature Store ---
+    try:
+        deps.feature_store = RedisFeatureStore(redis_url=settings.redis_url)
+        await asyncio.wait_for(deps.feature_store.connect(), timeout=0.15)
+        logger.info("Redis feature store connected.")
+    except Exception as e:
+        logger.warning("Redis feature store unavailable: %s. Using fallbacks.", e)
+        deps.feature_store = None
 
-        # --- Redis Burst Limiter ---
-        try:
-            deps.burst_limiter = BurstRateLimiter(redis_url=settings.redis_url)
-            await asyncio.wait_for(deps.burst_limiter.connect(), timeout=0.15)
-            logger.info("Burst rate limiter connected.")
-        except Exception as e:
-            logger.warning("Burst rate limiter unavailable: %s. Burst checks disabled.", e)
-            deps.burst_limiter = None
+    # --- Redis Burst Limiter ---
+    try:
+        deps.burst_limiter = BurstRateLimiter(redis_url=settings.redis_url)
+        await asyncio.wait_for(deps.burst_limiter.connect(), timeout=0.15)
+        logger.info("Burst rate limiter connected.")
+    except Exception as e:
+        logger.warning("Burst rate limiter unavailable: %s. Burst checks disabled.", e)
+        deps.burst_limiter = None
 
-    if not is_serverless or "localhost" not in settings.kafka_bootstrap_servers:
-        # --- Kafka Producer ---
-        try:
-            deps.kafka_producer = SentinelKafkaProducer(
-                bootstrap_servers=settings.kafka_bootstrap_servers,
-            )
-            await asyncio.wait_for(deps.kafka_producer.start(), timeout=0.15)
-            logger.info("Kafka producer started.")
-        except Exception as e:
-            logger.warning("Kafka producer unavailable: %s. Event emission disabled.", e)
-            deps.kafka_producer = None
+    # --- Kafka Producer ---
+    try:
+        deps.kafka_producer = SentinelKafkaProducer(
+            bootstrap_servers=settings.kafka_bootstrap_servers,
+        )
+        await asyncio.wait_for(deps.kafka_producer.start(), timeout=0.15)
+        logger.info("Kafka producer started.")
+    except Exception as e:
+        logger.warning("Kafka producer unavailable: %s. Event emission disabled.", e)
+        deps.kafka_producer = None
 
     logger.info("SENTINEL-RTO startup complete.")
     yield
@@ -118,7 +114,14 @@ async def get_burst_limiter() -> BurstRateLimiter | None:
 
 
 async def get_inference_engine() -> ONNXInferenceEngine | None:
-    """FastAPI dependency for ONNX inference engine."""
+    """FastAPI dependency for ONNX inference engine (lazy initialized on serverless)."""
+    if deps.inference_engine is None:
+        try:
+            settings = get_settings()
+            deps.inference_engine = ONNXInferenceEngine(model_path=settings.onnx_model_path)
+            await deps.inference_engine.start()
+        except Exception:
+            deps.inference_engine = None
     yield deps.inference_engine
 
 

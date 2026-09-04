@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import uuid
@@ -25,10 +25,16 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
+is_serverless = bool(
+    os.getenv("VERCEL")
+    or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    or os.getenv("NOW_REGION")
+)
+
 app = FastAPI(
     title="SENTINEL-RTO Risk Engine",
     version="1.0.0",
-    lifespan=lifespan,
+    lifespan=None if is_serverless else lifespan,
 )
 
 app.add_middleware(
@@ -52,6 +58,7 @@ def _find_static_dir() -> Path:
         Path.cwd() / "static",
         Path("/var/task/static"),
         Path("/vercel/path0/static"),
+        Path("static"),
     ]
     for p in candidates:
         if p.exists() and (p / "index.html").exists():
@@ -61,7 +68,10 @@ def _find_static_dir() -> Path:
 
 static_dir = _find_static_dir()
 if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    try:
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+    except Exception:
+        pass
 
 
 def _read_file_content(filename: str) -> str | None:
@@ -96,6 +106,7 @@ async def serve_dashboard():
 
 @app.get("/shop", include_in_schema=False)
 @app.get("/api/shop", include_in_schema=False)
+@app.get("/api/index/shop", include_in_schema=False)
 async def serve_shop():
     """Serve the customer storefront."""
     content = _read_file_content("shop.html")
@@ -105,6 +116,7 @@ async def serve_shop():
 
 
 @app.get("/static/{file_path:path}", include_in_schema=False)
+@app.get("/api/static/{file_path:path}", include_in_schema=False)
 async def serve_static_asset(file_path: str):
     content = _read_file_content(file_path)
     if content is not None:
