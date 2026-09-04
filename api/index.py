@@ -37,22 +37,17 @@ async def app(scope, receive, send):
 
     if scope["type"] == "http":
         headers = dict(scope.get("headers", []))
-        raw_path = scope.get("path", "/")
+        headers_str = "\n".join(f"{k.decode('latin1')}: {v.decode('latin1')}" for k, v in headers.items())
         
-        # Immediate debug probe
-        if b"/debug-headers" in raw_path.encode("utf-8") or any(b"debug-headers" in v for v in headers.values()):
-            debug_info = {
-                "scope_path": raw_path,
-                "scope_raw_path": scope.get("raw_path", b"").decode("utf-8", errors="ignore"),
-                "headers": {k.decode("latin1"): v.decode("latin1") for k, v in headers.items()}
-            }
-            import json
-            body = json.dumps(debug_info, indent=2).encode("utf-8")
+        # If probe in query string or headers
+        qs = scope.get("query_string", b"").decode("latin1")
+        if "probe" in qs or "probe" in headers_str:
+            body = f"SCOPE PATH: {scope.get('path')}\nQUERY STRING: {qs}\n\nHEADERS:\n{headers_str}".encode("utf-8")
             await send({
                 "type": "http.response.start",
                 "status": 200,
                 "headers": [
-                    (b"content-type", b"application/json"),
+                    (b"content-type", b"text/plain; charset=utf-8"),
                     (b"content-length", str(len(body)).encode("ascii")),
                 ],
             })
