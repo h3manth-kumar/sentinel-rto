@@ -36,13 +36,25 @@ async def app(scope, receive, send):
         return
 
     if scope["type"] == "http":
-        path = scope.get("path", "/")
-        # Strip /api/index prefix if added by Vercel rewrite
-        if path.startswith("/api/index"):
-            new_path = path[len("/api/index"):]
-            if not new_path or not new_path.startswith("/"):
-                new_path = "/" + new_path
-            scope["path"] = new_path
+        headers = dict(scope.get("headers", []))
+        matched = False
+        for h_name in (b"x-matched-path", b"x-forwarded-uri", b"x-invoke-path", b"x-original-url", b"x-rewrite-url"):
+            val = headers.get(h_name)
+            if val:
+                decoded = val.decode("utf-8", errors="ignore")
+                if decoded and not decoded.startswith("/api/index"):
+                    path_only = decoded.split("?")[0]
+                    scope["path"] = path_only
+                    matched = True
+                    break
+        
+        if not matched:
+            path = scope.get("path", "/")
+            if path.startswith("/api/index"):
+                new_path = path[len("/api/index"):]
+                if not new_path or not new_path.startswith("/"):
+                    new_path = "/" + new_path
+                scope["path"] = new_path
 
     try:
         await fastapi_app(scope, receive, send)
