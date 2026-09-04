@@ -37,6 +37,31 @@ async def app(scope, receive, send):
 
     if scope["type"] == "http":
         headers = dict(scope.get("headers", []))
+        raw_path = scope.get("path", "/")
+        
+        # Immediate debug probe
+        if b"/debug-headers" in raw_path.encode("utf-8") or any(b"debug-headers" in v for v in headers.values()):
+            debug_info = {
+                "scope_path": raw_path,
+                "scope_raw_path": scope.get("raw_path", b"").decode("utf-8", errors="ignore"),
+                "headers": {k.decode("latin1"): v.decode("latin1") for k, v in headers.items()}
+            }
+            import json
+            body = json.dumps(debug_info, indent=2).encode("utf-8")
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode("ascii")),
+                ],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": body,
+            })
+            return
+        headers = dict(scope.get("headers", []))
         matched = False
         for h_name in (b"x-matched-path", b"x-forwarded-uri", b"x-invoke-path", b"x-original-url", b"x-rewrite-url"):
             val = headers.get(h_name)

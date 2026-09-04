@@ -115,7 +115,14 @@ async def serve_shop():
     return HTMLResponse("<h1>Storefront</h1><p>Storefront template is loading...</p>", status_code=200)
 
 
-@app.get("/static/{file_path:path}", include_in_schema=False)
+@app.get("/api/debug-scope", include_in_schema=False)
+@app.get("/debug-scope", include_in_schema=False)
+async def debug_scope(request: Request):
+    return {
+        "url": str(request.url),
+        "path": request.url.path,
+        "headers": dict(request.headers),
+    }
 @app.get("/api/static/{file_path:path}", include_in_schema=False)
 async def serve_static_asset(file_path: str):
     content = _read_file_content(file_path)
